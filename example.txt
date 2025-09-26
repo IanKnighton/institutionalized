@@ -1,0 +1,2 @@
+This is a test file to demonstrate the institutionalized CLI tool.
+It helps generate conventional commit messages using AI.
