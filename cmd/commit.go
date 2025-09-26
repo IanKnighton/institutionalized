@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/IanKnighton/institutionalized/internal/config"
 )
 
 var commitCmd = &cobra.Command{
@@ -85,8 +87,11 @@ func runCommit(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Analyzing staged changes...")
 
+	// Check if emoji should be used (flag overrides config)
+	useEmoji, _ := cmd.Flags().GetBool("emoji")
+	
 	// Generate commit message using ChatGPT
-	commitMessage, err := generateCommitMessage(apiKey, diff)
+	commitMessage, err := generateCommitMessage(apiKey, diff, useEmoji)
 	if err != nil {
 		return fmt.Errorf("failed to generate commit message: %w", err)
 	}
@@ -123,19 +128,24 @@ func getStagedDiff() (string, error) {
 	return string(output), nil
 }
 
-func generateCommitMessage(apiKey, diff string) (string, error) {
+func generateCommitMessage(apiKey, diff string, useEmoji bool) (string, error) {
+	emojiInstruction := ""
+	if useEmoji {
+		emojiInstruction = "\n- Add an appropriate emoji at the beginning of the commit type (✨ feat, 🐛 fix, 📚 docs, 💄 style, ♻️ refactor, ✅ test, 🔧 chore, ⚡ perf, 👷 ci, 🏗️ build, ⏪ revert)"
+	}
+
 	prompt := fmt.Sprintf(`Analyze the following git diff and generate a conventional commit message. 
 
 The commit message should follow the Conventional Commits specification:
 - Start with a type (feat, fix, docs, style, refactor, test, chore, etc.)
 - Include a brief description in present tense
 - Keep the first line under 50 characters if possible
-- Add a body if the change is complex (separate with blank line)
+- Add a body if the change is complex (separate with blank line)%s
 
 Git diff:
 %s
 
-Return only the commit message, nothing else.`, diff)
+Return only the commit message, nothing else.`, emojiInstruction, diff)
 
 	reqBody := OpenAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -182,7 +192,14 @@ Return only the commit message, nothing else.`, diff)
 		return "", fmt.Errorf("no response from OpenAI")
 	}
 
-	return strings.TrimSpace(openAIResp.Choices[0].Message.Content), nil
+	commitMessage := strings.TrimSpace(openAIResp.Choices[0].Message.Content)
+	
+	// Post-process to add emoji if needed and not already present
+	if useEmoji {
+		commitMessage = addEmojiToCommitMessage(commitMessage)
+	}
+
+	return commitMessage, nil
 }
 
 func askForConfirmation(question string) bool {
@@ -199,4 +216,44 @@ func askForConfirmation(question string) bool {
 func commitChanges(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
 	return cmd.Run()
+}
+
+// addEmojiToCommitMessage adds appropriate emoji to commit message if not already present
+func addEmojiToCommitMessage(message string) string {
+	// Extract the commit type from the message
+	re := regexp.MustCompile(`^(\w+)(\(.+\))?:\s*(.*)`)
+	matches := re.FindStringSubmatch(message)
+	
+	if len(matches) >= 4 {
+		commitType := matches[1]
+		scope := matches[2] // includes parentheses if present
+		description := matches[3]
+		
+		// Check if emoji is already present
+		if hasEmoji(message) {
+			return message
+		}
+		
+		// Get emoji for commit type
+		emoji := config.GetEmojiForCommitType(commitType)
+		if emoji != "" {
+			return fmt.Sprintf("%s%s%s: %s", emoji, commitType, scope, description)
+		}
+	}
+	
+	return message
+}
+
+// hasEmoji checks if the message already contains emoji
+func hasEmoji(message string) bool {
+	// Simple check for common emoji characters
+	emojiRunes := []rune("✨🐛📚💄♻️✅🔧⚡👷🏗️⏪")
+	for _, r := range message {
+		for _, emoji := range emojiRunes {
+			if r == emoji {
+				return true
+			}
+		}
+	}
+	return false
 }

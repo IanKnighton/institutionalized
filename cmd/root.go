@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/IanKnighton/institutionalized/internal/config"
 )
+
+var appConfig *config.Config
 
 var rootCmd = &cobra.Command{
 	Use:   "institutionalized",
@@ -17,5 +20,14 @@ func Execute() error {
 }
 
 func init() {
+	// Load configuration
+	var err error
+	appConfig, err = config.LoadConfig()
+	if err != nil {
+		// Use default config if loading fails
+		appConfig = config.DefaultConfig()
+	}
+
 	rootCmd.PersistentFlags().StringP("api-key", "k", "", "OpenAI API key (can also be set via OPENAI_API_KEY environment variable)")
+	rootCmd.PersistentFlags().Bool("emoji", appConfig.UseEmoji, "Use emoji in commit messages (overrides config file setting)")
 }
