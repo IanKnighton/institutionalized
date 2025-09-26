@@ -10,13 +10,41 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	UseEmoji bool `yaml:"use_emoji"`
+	UseEmoji  bool      `yaml:"use_emoji"`
+	Providers Providers `yaml:"providers"`
+}
+
+// Providers represents the LLM provider configuration
+type Providers struct {
+	OpenAI ProviderConfig `yaml:"openai"`
+	Gemini ProviderConfig `yaml:"gemini"`
+	// Priority determines which provider to try first when both are available
+	// Valid values: "openai", "gemini"
+	Priority string `yaml:"priority"`
+	// DelayThreshold is the maximum time in seconds to wait for a provider response
+	// before trying the fallback provider (if available)
+	DelayThreshold int `yaml:"delay_threshold"`
+}
+
+// ProviderConfig represents configuration for a specific LLM provider
+type ProviderConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		UseEmoji: false,
+		Providers: Providers{
+			OpenAI: ProviderConfig{
+				Enabled: true,
+			},
+			Gemini: ProviderConfig{
+				Enabled: true,
+			},
+			Priority:       "openai",
+			DelayThreshold: 10,
+		},
 	}
 }
 

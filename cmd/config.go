@@ -24,7 +24,7 @@ var configShowCmd = &cobra.Command{
 var configSetCmd = &cobra.Command{
 	Use:   "set [key] [value]",
 	Short: "Set a configuration value",
-	Long:  `Set a configuration value. Available keys: use_emoji (true/false)`,
+	Long:  `Set a configuration value. Available keys: use_emoji (true/false), providers.openai.enabled (true/false), providers.gemini.enabled (true/false), providers.priority (openai/gemini), providers.delay_threshold (seconds)`,
 	Args:  cobra.ExactArgs(2),
 	RunE:  runConfigSet,
 }
@@ -51,6 +51,13 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Current configuration:")
 	fmt.Printf("  use_emoji: %t\n", cfg.UseEmoji)
+	fmt.Printf("  providers:\n")
+	fmt.Printf("    openai:\n")
+	fmt.Printf("      enabled: %t\n", cfg.Providers.OpenAI.Enabled)
+	fmt.Printf("    gemini:\n")
+	fmt.Printf("      enabled: %t\n", cfg.Providers.Gemini.Enabled)
+	fmt.Printf("    priority: %s\n", cfg.Providers.Priority)
+	fmt.Printf("    delay_threshold: %d seconds\n", cfg.Providers.DelayThreshold)
 
 	// Show config file location
 	homeDir, err := os.UserHomeDir()
@@ -85,8 +92,42 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		default:
 			return fmt.Errorf("invalid value for use_emoji: %s (expected true/false)", value)
 		}
+	case "providers.openai.enabled":
+		switch value {
+		case "true", "1", "yes", "on":
+			cfg.Providers.OpenAI.Enabled = true
+		case "false", "0", "no", "off":
+			cfg.Providers.OpenAI.Enabled = false
+		default:
+			return fmt.Errorf("invalid value for providers.openai.enabled: %s (expected true/false)", value)
+		}
+	case "providers.gemini.enabled":
+		switch value {
+		case "true", "1", "yes", "on":
+			cfg.Providers.Gemini.Enabled = true
+		case "false", "0", "no", "off":
+			cfg.Providers.Gemini.Enabled = false
+		default:
+			return fmt.Errorf("invalid value for providers.gemini.enabled: %s (expected true/false)", value)
+		}
+	case "providers.priority":
+		if value == "openai" || value == "gemini" {
+			cfg.Providers.Priority = value
+		} else {
+			return fmt.Errorf("invalid value for providers.priority: %s (expected openai/gemini)", value)
+		}
+	case "providers.delay_threshold":
+		// Parse the value as integer
+		var delayThreshold int
+		if _, err := fmt.Sscanf(value, "%d", &delayThreshold); err != nil {
+			return fmt.Errorf("invalid value for providers.delay_threshold: %s (expected number of seconds)", value)
+		}
+		if delayThreshold < 1 || delayThreshold > 300 {
+			return fmt.Errorf("invalid value for providers.delay_threshold: %d (expected 1-300 seconds)", delayThreshold)
+		}
+		cfg.Providers.DelayThreshold = delayThreshold
 	default:
-		return fmt.Errorf("unknown config key: %s (available: use_emoji)", key)
+		return fmt.Errorf("unknown config key: %s (available: use_emoji, providers.openai.enabled, providers.gemini.enabled, providers.priority, providers.delay_threshold)", key)
 	}
 
 	if err := config.SaveConfig(cfg); err != nil {

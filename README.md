@@ -4,15 +4,16 @@ A simple tool that uses an LLM to create commit and PR messages based on git sta
 
 ## Overview
 
-Institutionalized is a Go CLI tool that analyzes your staged git changes and uses ChatGPT to generate conventional commit messages, then prompts you to confirm before committing the changes.
+Institutionalized is a Go CLI tool that analyzes your staged git changes and uses AI providers (OpenAI ChatGPT or Google Gemini) to generate conventional commit messages, then prompts you to confirm before committing the changes.
 
 ## Features
 
-- 🤖 **AI-powered commit messages**: Uses OpenAI's ChatGPT to generate meaningful commit messages
+- 🤖 **AI-powered commit messages**: Uses OpenAI's ChatGPT or Google Gemini to generate meaningful commit messages
 - 📝 **Conventional Commits**: Follows the Conventional Commits specification by default
 - 🔍 **Smart analysis**: Analyzes your staged git changes to understand the context
 - 🛡️ **User confirmation**: Always asks for confirmation before committing
-- 🔧 **Flexible configuration**: Supports API key via environment variable or command flag
+- 🔧 **Flexible configuration**: Support for multiple AI providers with fallback capability
+- ⚡ **Provider fallback**: Automatically switches to backup provider if primary fails or times out
 - 😊 **Emoji support**: Optional emoji prefixes for commit types (✨ feat, 🐛 fix, etc.)
 
 ## Installation
@@ -29,19 +30,24 @@ go build -o institutionalized .
 
 ### Setup
 
-First, you need an OpenAI API key. You can get one from [OpenAI's platform](https://platform.openai.com/api-keys).
+You need an API key from one or both of the supported providers:
 
-Set your API key either as an environment variable:
+**OpenAI**: Get your API key from [OpenAI's platform](https://platform.openai.com/api-keys)
+**Google Gemini**: Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
-
-Or pass it as a flag:
+Set your API key(s) as environment variables:
 
 ```bash
-institutionalized commit --api-key "your-api-key-here"
+# For OpenAI (ChatGPT)
+export OPENAI_API_KEY="your-openai-key-here"
+
+# For Google Gemini
+export GEMINI_API_KEY="your-gemini-key-here"
+
+# You can set both - the tool will use them based on your configuration
 ```
+
+The tool will automatically detect which API keys are available and use them according to your configuration preferences.
 
 ### Basic Usage
 
@@ -64,6 +70,10 @@ Institutionalized supports a configuration file located at `~/.config/institutio
 #### Available Configuration Options
 
 - `use_emoji`: Enable/disable emoji prefixes in commit messages (default: `false`)
+- `providers.openai.enabled`: Enable/disable OpenAI ChatGPT provider (default: `true`)
+- `providers.gemini.enabled`: Enable/disable Google Gemini provider (default: `true`)
+- `providers.priority`: Which provider to try first when both are available - `openai` or `gemini` (default: `openai`)
+- `providers.delay_threshold`: Maximum seconds to wait for a provider response before trying fallback (default: `10`, range: 1-300)
 
 #### Managing Configuration
 
@@ -84,6 +94,15 @@ institutionalized config set use_emoji true
 
 # Disable emoji in commit messages
 institutionalized config set use_emoji false
+
+# Set Gemini as the primary provider
+institutionalized config set providers.priority gemini
+
+# Disable OpenAI provider (use only Gemini)
+institutionalized config set providers.openai.enabled false
+
+# Set delay threshold to 20 seconds
+institutionalized config set providers.delay_threshold 20
 ```
 
 #### Emoji Support
@@ -122,22 +141,24 @@ institutionalized commit --emoji=false
 
 #### `institutionalized commit`
 
-Analyzes staged changes and generates a conventional commit message using ChatGPT.
+Analyzes staged changes and generates a conventional commit message using available AI providers (OpenAI ChatGPT or Google Gemini).
 
 **Flags:**
-- `--api-key, -k`: OpenAI API key (can also be set via `OPENAI_API_KEY` environment variable)
+- `--api-key, -k`: OpenAI API key (deprecated: use `OPENAI_API_KEY` environment variable)
 - `--emoji`: Use emoji in commit messages (overrides config file setting)
 - `--dry-run`: Show staged changes without calling API or committing (useful for testing)
 
 **Examples:**
 
 ```bash
-# Basic usage with environment variable
-export OPENAI_API_KEY="your-key"
+# Basic usage with environment variables
+export OPENAI_API_KEY="your-openai-key"
+export GEMINI_API_KEY="your-gemini-key"
 institutionalized commit
 
-# Using API key flag
-institutionalized commit --api-key "your-key"
+# Using only OpenAI (if you have both keys but want to use only OpenAI)
+institutionalized config set providers.gemini.enabled false
+institutionalized commit
 
 # Dry run to see what changes would be analyzed
 institutionalized commit --dry-run
@@ -155,6 +176,13 @@ Manage configuration settings for institutionalized.
 - `set <key> <value>`: Set a configuration value
 - `init`: Create a default configuration file
 
+**Available configuration keys:**
+- `use_emoji`: Enable/disable emoji support (true/false)
+- `providers.openai.enabled`: Enable/disable OpenAI provider (true/false)
+- `providers.gemini.enabled`: Enable/disable Gemini provider (true/false)
+- `providers.priority`: Set provider priority (openai/gemini)
+- `providers.delay_threshold`: Set timeout in seconds (1-300)
+
 **Examples:**
 
 ```bash
@@ -163,6 +191,9 @@ institutionalized config show
 
 # Enable emoji support
 institutionalized config set use_emoji true
+
+# Set Gemini as primary provider
+institutionalized config set providers.priority gemini
 
 # Create default config file
 institutionalized config init
