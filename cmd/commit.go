@@ -12,8 +12,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/IanKnighton/institutionalized/internal/config"
+	"github.com/spf13/cobra"
 )
 
 var commitCmd = &cobra.Command{
@@ -89,7 +89,7 @@ func runCommit(cmd *cobra.Command, args []string) error {
 
 	// Check if emoji should be used (flag overrides config)
 	useEmoji, _ := cmd.Flags().GetBool("emoji")
-	
+
 	// Generate commit message using ChatGPT
 	commitMessage, err := generateCommitMessage(apiKey, diff, useEmoji)
 	if err != nil {
@@ -193,7 +193,7 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 	}
 
 	commitMessage := strings.TrimSpace(openAIResp.Choices[0].Message.Content)
-	
+
 	// Post-process to add emoji if needed and not already present
 	if useEmoji {
 		commitMessage = addEmojiToCommitMessage(commitMessage)
@@ -223,24 +223,24 @@ func addEmojiToCommitMessage(message string) string {
 	// Extract the commit type from the message
 	re := regexp.MustCompile(`^(\w+)(\(.+\))?:\s*(.*)`)
 	matches := re.FindStringSubmatch(message)
-	
+
 	if len(matches) >= 4 {
 		commitType := matches[1]
 		scope := matches[2] // includes parentheses if present
 		description := matches[3]
-		
+
 		// Check if emoji is already present
 		if hasEmoji(message) {
 			return message
 		}
-		
+
 		// Get emoji for commit type
 		emoji := config.GetEmojiForCommitType(commitType)
 		if emoji != "" {
 			return fmt.Sprintf("%s%s%s: %s", emoji, commitType, scope, description)
 		}
 	}
-	
+
 	return message
 }
 

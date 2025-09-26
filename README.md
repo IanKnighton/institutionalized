@@ -13,6 +13,7 @@ Institutionalized is a Go CLI tool that analyzes your staged git changes and use
 - 🔍 **Smart analysis**: Analyzes your staged git changes to understand the context
 - 🛡️ **User confirmation**: Always asks for confirmation before committing
 - 🔧 **Flexible configuration**: Supports API key via environment variable or command flag
+- 😊 **Emoji support**: Optional emoji prefixes for commit types (✨ feat, 🐛 fix, etc.)
 
 ## Installation
 
@@ -56,6 +57,67 @@ institutionalized commit --api-key "your-api-key-here"
 
 3. Review the proposed commit message and confirm or cancel.
 
+### Configuration
+
+Institutionalized supports a configuration file located at `~/.config/institutionalized/config.yaml`. The configuration file allows you to customize the behavior of the tool.
+
+#### Available Configuration Options
+
+- `use_emoji`: Enable/disable emoji prefixes in commit messages (default: `false`)
+
+#### Managing Configuration
+
+**View current configuration:**
+```bash
+institutionalized config show
+```
+
+**Create a default configuration file:**
+```bash
+institutionalized config init
+```
+
+**Set configuration values:**
+```bash
+# Enable emoji in commit messages
+institutionalized config set use_emoji true
+
+# Disable emoji in commit messages
+institutionalized config set use_emoji false
+```
+
+#### Emoji Support
+
+When emoji support is enabled (`use_emoji: true`), commit messages will be prefixed with appropriate emoji:
+
+- ✨ `feat`: New features
+- 🐛 `fix`: Bug fixes
+- 📚 `docs`: Documentation changes
+- 💄 `style`: Code style changes
+- ♻️ `refactor`: Code refactoring
+- ✅ `test`: Adding or updating tests
+- 🔧 `chore`: Build process or auxiliary tool changes
+- ⚡ `perf`: Performance improvements
+- 👷 `ci`: CI/CD changes
+- 🏗️ `build`: Build system changes
+- ⏪ `revert`: Reverting changes
+
+**Example with emoji enabled:**
+```
+✨ feat: add user authentication system
+
+Implement JWT-based authentication with login and signup endpoints.
+```
+
+**Override emoji setting per command:**
+```bash
+# Use emoji for this commit (overrides config)
+institutionalized commit --emoji
+
+# Don't use emoji for this commit (overrides config)
+institutionalized commit --emoji=false
+```
+
 ### Commands
 
 #### `institutionalized commit`
@@ -64,6 +126,7 @@ Analyzes staged changes and generates a conventional commit message using ChatGP
 
 **Flags:**
 - `--api-key, -k`: OpenAI API key (can also be set via `OPENAI_API_KEY` environment variable)
+- `--emoji`: Use emoji in commit messages (overrides config file setting)
 - `--dry-run`: Show staged changes without calling API or committing (useful for testing)
 
 **Examples:**
@@ -78,6 +141,31 @@ institutionalized commit --api-key "your-key"
 
 # Dry run to see what changes would be analyzed
 institutionalized commit --dry-run
+
+# Use emoji for this specific commit
+institutionalized commit --emoji
+```
+
+#### `institutionalized config`
+
+Manage configuration settings for institutionalized.
+
+**Subcommands:**
+- `show`: Display current configuration values
+- `set <key> <value>`: Set a configuration value
+- `init`: Create a default configuration file
+
+**Examples:**
+
+```bash
+# View current configuration
+institutionalized config show
+
+# Enable emoji support
+institutionalized config set use_emoji true
+
+# Create default config file
+institutionalized config init
 ```
 
 ### Example Workflow

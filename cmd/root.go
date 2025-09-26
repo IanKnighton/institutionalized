@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/IanKnighton/institutionalized/internal/config"
+	"github.com/spf13/cobra"
 )
 
 var appConfig *config.Config
