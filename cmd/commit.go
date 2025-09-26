@@ -32,7 +32,7 @@ type Message struct {
 }
 
 type OpenAIResponse struct {
-	Choices []Choice `json:"choices"`
+	Choices []Choice  `json:"choices"`
 	Error   *APIError `json:"error,omitempty"`
 }
 
@@ -47,18 +47,10 @@ type APIError struct {
 
 func init() {
 	rootCmd.AddCommand(commitCmd)
+	commitCmd.Flags().Bool("dry-run", false, "Show staged changes without calling API or committing")
 }
 
 func runCommit(cmd *cobra.Command, args []string) error {
-	// Get API key from flag or environment
-	apiKey, _ := cmd.Flags().GetString("api-key")
-	if apiKey == "" {
-		apiKey = os.Getenv("OPENAI_API_KEY")
-	}
-	if apiKey == "" {
-		return fmt.Errorf("OpenAI API key is required. Set it via --api-key flag or OPENAI_API_KEY environment variable")
-	}
-
 	// Check if we're in a git repository
 	if !isGitRepo() {
 		return fmt.Errorf("not in a git repository")
@@ -72,6 +64,23 @@ func runCommit(cmd *cobra.Command, args []string) error {
 
 	if strings.TrimSpace(diff) == "" {
 		return fmt.Errorf("no staged changes found. Use 'git add' to stage changes first")
+	}
+
+	// Check for dry-run mode
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	if dryRun {
+		fmt.Println("Staged changes found:")
+		fmt.Println(diff)
+		return nil
+	}
+
+	// Get API key from flag or environment
+	apiKey, _ := cmd.Flags().GetString("api-key")
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENAI_API_KEY")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("OpenAI API key is required. Set it via --api-key flag or OPENAI_API_KEY environment variable")
 	}
 
 	fmt.Println("Analyzing staged changes...")
