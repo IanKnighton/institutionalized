@@ -14,7 +14,7 @@ import (
 // Provider represents an LLM provider interface
 type Provider interface {
 	GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error)
-	GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (title string, body string, err error)
+	GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (title string, body string, err error)
 	Name() string
 }
 
@@ -173,19 +173,32 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 }
 
 // GeneratePRContent generates PR title and body using OpenAI
-func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, error) {
+func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
 	emojiInstruction := ""
 	if useEmoji {
 		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
 	}
 
+	templateInstruction := ""
+	if prTemplate != "" {
+		templateInstruction = fmt.Sprintf(`
+
+IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
+
+--- PR TEMPLATE START ---
+%s
+--- PR TEMPLATE END ---
+
+When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
+	}
+
 	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
 
-The pull request merges branch '%s' into '%s'.
+The pull request merges branch '%s' into '%s'.%s
 
 Requirements:
 - Generate a clear, concise PR title that summarizes the main purpose of the changes
-- Create a detailed PR body with the following sections:
+- Create a detailed PR body with the following sections (unless overridden by template above):
   - ## Summary: Brief overview of what this PR accomplishes
   - ## Changes Made: Bullet points of key changes and improvements
   - ## Testing: Description of testing performed or needed
@@ -198,7 +211,7 @@ Return the response in this exact format:
 TITLE: [your generated title here]
 
 BODY:
-[your generated body here]`, currentBranch, defaultBranch, emojiInstruction, commits)
+[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
 
 	reqBody := openAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -327,19 +340,32 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 }
 
 // GeneratePRContent generates PR title and body using Gemini
-func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, error) {
+func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
 	emojiInstruction := ""
 	if useEmoji {
 		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
 	}
 
+	templateInstruction := ""
+	if prTemplate != "" {
+		templateInstruction = fmt.Sprintf(`
+
+IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
+
+--- PR TEMPLATE START ---
+%s
+--- PR TEMPLATE END ---
+
+When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
+	}
+
 	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
 
-The pull request merges branch '%s' into '%s'.
+The pull request merges branch '%s' into '%s'.%s
 
 Requirements:
 - Generate a clear, concise PR title that summarizes the main purpose of the changes
-- Create a detailed PR body with the following sections:
+- Create a detailed PR body with the following sections (unless overridden by template above):
   - ## Summary: Brief overview of what this PR accomplishes
   - ## Changes Made: Bullet points of key changes and improvements
   - ## Testing: Description of testing performed or needed
@@ -352,7 +378,7 @@ Return the response in this exact format:
 TITLE: [your generated title here]
 
 BODY:
-[your generated body here]`, currentBranch, defaultBranch, emojiInstruction, commits)
+[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -484,12 +510,12 @@ func (pm *ProviderManager) GenerateCommitMessage(diff string, useEmoji bool) (st
 }
 
 // GeneratePRContent tries providers in order to generate PR title and body
-func (pm *ProviderManager) GeneratePRContent(commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, string, error) {
+func (pm *ProviderManager) GeneratePRContent(commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, string, error) {
 	for i, provider := range pm.providers {
 		ctx, cancel := context.WithTimeout(context.Background(), pm.delayThreshold)
 		defer cancel()
 
-		title, body, err := provider.GeneratePRContent(ctx, commits, currentBranch, defaultBranch, useEmoji)
+		title, body, err := provider.GeneratePRContent(ctx, commits, currentBranch, defaultBranch, useEmoji, prTemplate)
 		if err == nil {
 			return title, body, provider.Name(), nil
 		}
