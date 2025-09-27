@@ -11,13 +11,14 @@ Institutionalized is a Go CLI tool that analyzes your staged git changes and use
 - 🤖 **AI-powered commit messages**: Uses OpenAI's ChatGPT or Google Gemini to generate meaningful commit messages
 - 📝 **Conventional Commits**: Follows the Conventional Commits specification by default
 - 🔍 **Smart analysis**: Analyzes your staged git changes to understand the context
-- 🛡️ **User confirmation**: Always asks for confirmation before committing
+- 🛡️ **User confirmation**: Always asks for confirmation before committing or creating PRs
 - 🔧 **Flexible configuration**: Support for multiple AI providers with fallback capability
 - 🚀 **Pull Request creation**: Creates comprehensive PRs with GitHub CLI integration
 - 📋 **Draft PR support**: Option to create draft pull requests
 - 🔍 **Dry-run mode**: Preview PR content without creating actual PRs
 - ⚡ **Provider fallback**: Automatically switches to backup provider if primary fails or times out
 - 😊 **Emoji support**: Optional emoji prefixes for commit types (✨ feat, 🐛 fix, etc.)
+- 🚫 **Skip confirmation**: Optional flag to bypass confirmation prompts for automation
 
 ## Installation
 
@@ -214,15 +215,22 @@ Create a pull request using GitHub CLI that documents the scope of changes made,
 **Flags:**
 - `--draft, -d`: Create a draft pull request
 - `--dry-run`: Show what would be done without creating the PR (doesn't require authentication)
+- `--yes, -y`: Skip confirmation prompt and create PR immediately
 
 **Examples:**
 
 ```bash
-# Create a standard pull request
+# Create a standard pull request (prompts for confirmation)
 institutionalized pr
 
-# Create a draft pull request
+# Create a draft pull request (prompts for confirmation)
 institutionalized pr --draft
+
+# Skip confirmation and create PR immediately
+institutionalized pr --yes
+
+# Create draft PR without confirmation
+institutionalized pr --draft --yes
 
 # Preview what the PR would look like (no authentication required)
 institutionalized pr --dry-run

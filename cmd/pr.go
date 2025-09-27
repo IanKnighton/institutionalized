@@ -24,6 +24,7 @@ func init() {
 	rootCmd.AddCommand(prCmd)
 	prCmd.Flags().BoolP("draft", "d", false, "Create a draft pull request")
 	prCmd.Flags().Bool("dry-run", false, "Show what would be done without creating the PR")
+	prCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt and create PR immediately")
 }
 
 func runPR(cmd *cobra.Command, args []string) error {
@@ -98,6 +99,31 @@ func runPR(cmd *cobra.Command, args []string) error {
 
 	// Check for draft flag
 	isDraft, _ := cmd.Flags().GetBool("draft")
+
+	// Check for yes flag to skip confirmation
+	skipConfirmation, _ := cmd.Flags().GetBool("yes")
+
+	// Show PR preview and ask for confirmation unless --yes flag is provided
+	if !skipConfirmation {
+		fmt.Printf("📋 PR Preview\n")
+		fmt.Printf("=====================================\n")
+		fmt.Printf("Title: %s\n", prTitle)
+		fmt.Printf("Base: %s\n", defaultBranch)
+		fmt.Printf("Head: %s\n", currentBranch)
+		if isDraft {
+			fmt.Printf("Draft: Yes\n")
+		} else {
+			fmt.Printf("Draft: No\n")
+		}
+		fmt.Printf("\nBody:\n%s\n", prBody)
+		fmt.Printf("=====================================\n")
+
+		// Ask for user confirmation
+		if !askForConfirmation("Do you want to create this pull request?") {
+			fmt.Println("Pull request creation cancelled.")
+			return nil
+		}
+	}
 
 	// Create the PR
 	if err := createPR(prTitle, prBody, currentBranch, defaultBranch, isDraft); err != nil {
