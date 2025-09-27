@@ -231,13 +231,24 @@ institutionalized pr --dry-run
 institutionalized pr --draft --dry-run
 ```
 
+**Pull Request Templates:**
+
+The tool automatically detects and respects pull request templates in your repository. It looks for templates in the following locations (in order of priority):
+- `.github/pull_request_template.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`
+- `docs/pull_request_template.md`
+
+When a template is found, the LLM is instructed to follow the template structure while generating the PR description based on your commit history.
+
 **How it works:**
 1. Verifies `gh` CLI is installed and user is authenticated
 2. Checks that current branch is not the default branch
 3. Analyzes commit history between current branch and default branch
-4. Generates PR title from the most recent commit message
-5. Creates comprehensive PR description with commit summary and structured content
-6. Uses `gh pr create` to create the pull request
+4. Detects and reads pull request template (if available)
+5. Generates PR title from the most recent commit message
+6. Creates comprehensive PR description following the template structure (if available) with commit summary and structured content
+7. Uses `gh pr create` to create the pull request
 
 ### Example Workflow
 
