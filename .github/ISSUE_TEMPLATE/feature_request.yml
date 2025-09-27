@@ -1,0 +1,204 @@
+name: Feature Request
+description: Suggest a new feature or improvement for Institutionalized
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please provide as much detail as possible to help us understand your needs and evaluate the request.
+
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see added.
+      placeholder: Briefly describe the feature you're requesting...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem or Use Case
+      description: |
+        What problem does this feature solve? What's your use case?
+        This helps us understand the motivation behind the request.
+      placeholder: |
+        Describe the problem you're trying to solve or the use case this feature would enable...
+        
+        For example:
+        - "As a developer working on large teams, I need..."
+        - "Currently, when I try to..., I encounter..."
+        - "It would be helpful if..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this feature working.
+      placeholder: |
+        Describe your proposed solution in detail...
+        
+        Consider including:
+        - New commands or flags
+        - Configuration options
+        - User interface changes
+        - Integration with existing features
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative-solutions
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches or workarounds?
+      placeholder: |
+        Describe any alternative solutions or features you've considered...
+        
+        This could include:
+        - Different ways to implement the feature
+        - Existing tools or workarounds you currently use
+        - Other approaches that might solve the same problem
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: Which area of Institutionalized does this feature relate to?
+      options:
+        - AI/LLM Integration
+        - Git Operations
+        - Configuration Management
+        - Pull Request Creation
+        - Command Line Interface
+        - Output/Formatting
+        - Performance
+        - Documentation
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my workflow
+        - Critical - Blocking my usage
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: |
+        How complex do you think this feature would be to implement?
+        (This is just your estimate - we'll evaluate the actual complexity)
+      options:
+        - Low - Small change or addition
+        - Medium - Moderate development effort
+        - High - Significant feature addition
+        - Very High - Major architectural change
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples and Use Cases
+      description: |
+        Provide specific examples of how this feature would be used.
+        Include command examples, configuration snippets, or workflows.
+      placeholder: |
+        Example usage scenarios:
+        
+        ```bash
+        # Example command usage
+        institutionalized commit --new-feature-flag
+        ```
+        
+        ```yaml
+        # Example configuration
+        new_feature:
+          enabled: true
+          option: value
+        ```
+        
+        Use case 1: When working with...
+        Use case 2: For projects that...
+      render: markdown
+
+  - type: textarea
+    id: impact-analysis
+    attributes:
+      label: Impact and Benefits
+      description: |
+        Who would benefit from this feature and how?
+        Consider the broader impact on different types of users.
+      placeholder: |
+        This feature would benefit:
+        - Individual developers by...
+        - Team workflows by...
+        - Open source projects by...
+        
+        Expected benefits:
+        - Improved productivity
+        - Better user experience
+        - Reduced manual work
+        - etc.
+
+  - type: textarea
+    id: implementation-considerations
+    attributes:
+      label: Implementation Considerations
+      description: |
+        Are there any specific technical considerations, constraints, or requirements?
+        (Optional - only fill this out if you have technical insights)
+      placeholder: |
+        Technical considerations:
+        - API limitations or requirements
+        - Backwards compatibility needs
+        - Performance implications
+        - Integration requirements
+        - Security considerations
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context, mockups, links to similar features in other tools, etc.
+      placeholder: |
+        Additional information:
+        - Links to similar features in other tools
+        - Screenshots or mockups
+        - Related discussions or issues
+        - References or documentation
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting this feature request.
+      options:
+        - label: I have searched existing issues and feature requests to make sure this hasn't been suggested before
+          required: true
+        - label: This feature request is specific and actionable
+          required: true
+        - label: I have provided sufficient detail for the maintainers to understand the request
+          required: true
+        - label: I understand that feature requests are evaluated based on community benefit, complexity, and maintainer capacity
+          required: true
+        - label: I am willing to help test this feature if it gets implemented
+          required: false
+        - label: I am interested in contributing to the implementation (if I have the necessary skills)
+          required: false
