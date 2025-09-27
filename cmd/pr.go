@@ -180,6 +180,30 @@ func branchExists(branch string) bool {
 	return cmd.Run() == nil
 }
 
+// getPRTemplate looks for pull_request_template.md in the .github directory
+func getPRTemplate() (string, error) {
+	// Common locations for PR templates
+	templatePaths := []string{
+		".github/pull_request_template.md",
+		".github/PULL_REQUEST_TEMPLATE.md",
+		".github/PULL_REQUEST_TEMPLATE/pull_request_template.md",
+		"docs/pull_request_template.md",
+	}
+
+	for _, templatePath := range templatePaths {
+		if _, err := os.Stat(templatePath); err == nil {
+			content, err := os.ReadFile(templatePath)
+			if err != nil {
+				return "", fmt.Errorf("failed to read PR template at %s: %w", templatePath, err)
+			}
+			return strings.TrimSpace(string(content)), nil
+		}
+	}
+
+	// No template found
+	return "", nil
+}
+
 // generatePRContent generates the PR title and body using LLM providers
 func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, isDryRun bool) (string, string, error) {
 	// First, try to get commits between default branch and current branch
@@ -200,6 +224,12 @@ func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, 
 		return "", "", fmt.Errorf("no commits found on branch %s", currentBranch)
 	}
 
+	// Get PR template if available
+	prTemplate, err := getPRTemplate()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get PR template: %w", err)
+	}
+
 	// For dry-run mode, use a simple template without requiring API keys
 	if isDryRun {
 		// Generate PR title from the first commit or branch name
@@ -216,7 +246,27 @@ func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, 
 		}
 
 		// Generate PR body with simple template
-		prBody := fmt.Sprintf(`## Summary
+		var prBody string
+		if prTemplate != "" {
+			prBody = fmt.Sprintf(`## Summary
+
+This pull request includes changes from the **%s** branch.
+
+## Recent Commits
+%s
+
+## Template Structure
+This PR follows the repository's pull request template:
+
+%s
+
+## Additional Notes
+- This PR merges **%s** into **%s**
+
+---
+*This PR preview was created by institutionalized (dry-run mode)*`, currentBranch, commits, prTemplate, currentBranch, defaultBranch)
+		} else {
+			prBody = fmt.Sprintf(`## Summary
 
 This pull request includes changes from the **%s** branch.
 
@@ -236,6 +286,7 @@ This pull request includes changes from the **%s** branch.
 
 ---
 *This PR preview was created by institutionalized (dry-run mode)*`, currentBranch, commits, currentBranch, defaultBranch)
+		}
 
 		return prTitle, prBody, nil
 	}
@@ -258,7 +309,7 @@ This pull request includes changes from the **%s** branch.
 	manager := llm.NewProviderManager(providers, delayThreshold)
 
 	// Generate PR content using available providers
-	prTitle, prBody, providerUsed, err := manager.GeneratePRContent(commits, currentBranch, defaultBranch, useEmoji)
+	prTitle, prBody, providerUsed, err := manager.GeneratePRContent(commits, currentBranch, defaultBranch, useEmoji, prTemplate)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate PR content using %s: %w", providerUsed, err)
 	}
