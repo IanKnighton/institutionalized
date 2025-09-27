@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/IanKnighton/institutionalized/internal/config"
+	"github.com/IanKnighton/institutionalized/internal/llm"
 	"github.com/spf13/cobra"
 )
 
@@ -70,7 +72,7 @@ func runPR(cmd *cobra.Command, args []string) error {
 	}
 
 	// Generate PR title and body
-	prTitle, prBody, err := generatePRContent(currentBranch, defaultBranch, cfg)
+	prTitle, prBody, err := generatePRContent(currentBranch, defaultBranch, cfg, isDryRun)
 	if err != nil {
 		return fmt.Errorf("failed to generate PR content: %w", err)
 	}
@@ -178,8 +180,8 @@ func branchExists(branch string) bool {
 	return cmd.Run() == nil
 }
 
-// generatePRContent generates the PR title and body based on commits
-func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config) (string, string, error) {
+// generatePRContent generates the PR title and body using LLM providers
+func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, isDryRun bool) (string, string, error) {
 	// First, try to get commits between default branch and current branch
 	cmd := exec.Command("git", "log", fmt.Sprintf("%s..%s", defaultBranch, currentBranch), "--oneline")
 	output, err := cmd.Output()
@@ -198,21 +200,23 @@ func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config) 
 		return "", "", fmt.Errorf("no commits found on branch %s", currentBranch)
 	}
 
-	// Generate PR title from the first commit or branch name
-	commitLines := strings.Split(commits, "\n")
-	firstCommit := commitLines[0]
+	// For dry-run mode, use a simple template without requiring API keys
+	if isDryRun {
+		// Generate PR title from the first commit or branch name
+		commitLines := strings.Split(commits, "\n")
+		firstCommit := commitLines[0]
 
-	// Extract commit message (remove hash)
-	parts := strings.SplitN(firstCommit, " ", 2)
-	var prTitle string
-	if len(parts) > 1 {
-		prTitle = parts[1]
-	} else {
-		prTitle = fmt.Sprintf("Changes from %s", currentBranch)
-	}
+		// Extract commit message (remove hash)
+		parts := strings.SplitN(firstCommit, " ", 2)
+		var prTitle string
+		if len(parts) > 1 {
+			prTitle = parts[1]
+		} else {
+			prTitle = fmt.Sprintf("Changes from %s", currentBranch)
+		}
 
-	// Generate PR body with feature summary
-	prBody := fmt.Sprintf(`## Summary
+		// Generate PR body with simple template
+		prBody := fmt.Sprintf(`## Summary
 
 This pull request includes changes from the **%s** branch.
 
@@ -231,7 +235,35 @@ This pull request includes changes from the **%s** branch.
 - This PR merges **%s** into **%s**
 
 ---
-*This PR was created automatically by institutionalized*`, currentBranch, commits, currentBranch, defaultBranch)
+*This PR preview was created by institutionalized (dry-run mode)*`, currentBranch, commits, currentBranch, defaultBranch)
+
+		return prTitle, prBody, nil
+	}
+
+	// Setup providers based on configuration and available API keys
+	providers, err := setupProviders(cfg)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to setup providers: %w", err)
+	}
+
+	if len(providers) == 0 {
+		return "", "", fmt.Errorf("no LLM providers available. Please set OPENAI_API_KEY or GEMINI_API_KEY environment variable")
+	}
+
+	// Determine if emoji should be used
+	useEmoji := cfg.UseEmoji
+
+	// Create provider manager with configured delay threshold
+	delayThreshold := time.Duration(cfg.Providers.DelayThreshold) * time.Second
+	manager := llm.NewProviderManager(providers, delayThreshold)
+
+	// Generate PR content using available providers
+	prTitle, prBody, providerUsed, err := manager.GeneratePRContent(commits, currentBranch, defaultBranch, useEmoji)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate PR content using %s: %w", providerUsed, err)
+	}
+
+	fmt.Printf("✨ PR content generated using %s\n", providerUsed)
 
 	return prTitle, prBody, nil
 }

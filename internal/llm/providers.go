@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
 // Provider represents an LLM provider interface
 type Provider interface {
 	GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error)
+	GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (title string, body string, err error)
 	Name() string
 }
 
@@ -170,6 +172,83 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 	return openAIResp.Choices[0].Message.Content, nil
 }
 
+// GeneratePRContent generates PR title and body using OpenAI
+func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, error) {
+	emojiInstruction := ""
+	if useEmoji {
+		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
+	}
+
+	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
+
+The pull request merges branch '%s' into '%s'.
+
+Requirements:
+- Generate a clear, concise PR title that summarizes the main purpose of the changes
+- Create a detailed PR body with the following sections:
+  - ## Summary: Brief overview of what this PR accomplishes
+  - ## Changes Made: Bullet points of key changes and improvements
+  - ## Testing: Description of testing performed or needed
+  - ## Additional Notes: Any important information for reviewers%s
+
+Commits to analyze:
+%s
+
+Return the response in this exact format:
+TITLE: [your generated title here]
+
+BODY:
+[your generated body here]`, currentBranch, defaultBranch, emojiInstruction, commits)
+
+	reqBody := openAIRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []message{
+			{Role: "user", Content: prompt},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var openAIResp openAIResponse
+	if err := json.Unmarshal(body, &openAIResp); err != nil {
+		return "", "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if openAIResp.Error != nil {
+		return "", "", fmt.Errorf("OpenAI API error: %s", openAIResp.Error.Message)
+	}
+
+	if len(openAIResp.Choices) == 0 {
+		return "", "", fmt.Errorf("no response from OpenAI")
+	}
+
+	content := openAIResp.Choices[0].Message.Content
+	return parsePRResponse(content)
+}
+
 // GenerateCommitMessage generates a commit message using Gemini
 func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
 	emojiInstruction := ""
@@ -247,6 +326,120 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
+// GeneratePRContent generates PR title and body using Gemini
+func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, error) {
+	emojiInstruction := ""
+	if useEmoji {
+		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
+	}
+
+	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
+
+The pull request merges branch '%s' into '%s'.
+
+Requirements:
+- Generate a clear, concise PR title that summarizes the main purpose of the changes
+- Create a detailed PR body with the following sections:
+  - ## Summary: Brief overview of what this PR accomplishes
+  - ## Changes Made: Bullet points of key changes and improvements
+  - ## Testing: Description of testing performed or needed
+  - ## Additional Notes: Any important information for reviewers%s
+
+Commits to analyze:
+%s
+
+Return the response in this exact format:
+TITLE: [your generated title here]
+
+BODY:
+[your generated body here]`, currentBranch, defaultBranch, emojiInstruction, commits)
+
+	reqBody := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: []geminiPart{
+					{Text: prompt},
+				},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=%s", p.apiKey)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var geminiResp geminiResponse
+	if err := json.Unmarshal(body, &geminiResp); err != nil {
+		return "", "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if geminiResp.Error != nil {
+		return "", "", fmt.Errorf("Gemini API error: %s", geminiResp.Error.Message)
+	}
+
+	if len(geminiResp.Candidates) == 0 {
+		return "", "", fmt.Errorf("no response from Gemini")
+	}
+
+	content := geminiResp.Candidates[0].Content.Parts[0].Text
+	return parsePRResponse(content)
+}
+
+// parsePRResponse parses the LLM response to extract title and body
+func parsePRResponse(content string) (string, string, error) {
+	lines := strings.Split(content, "\n")
+	var title, body string
+	var inBody bool
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "TITLE:") {
+			title = strings.TrimSpace(strings.TrimPrefix(line, "TITLE:"))
+		} else if strings.HasPrefix(line, "BODY:") {
+			inBody = true
+		} else if inBody {
+			if body != "" {
+				body += "\n"
+			}
+			body += line
+		}
+	}
+
+	if title == "" {
+		return "", "", fmt.Errorf("no title found in LLM response")
+	}
+
+	if body == "" {
+		return "", "", fmt.Errorf("no body found in LLM response")
+	}
+
+	// Clean up the body
+	body = strings.TrimSpace(body)
+
+	return title, body, nil
+}
+
 // ProviderManager manages multiple LLM providers with fallback capability
 type ProviderManager struct {
 	providers      []Provider
@@ -288,4 +481,33 @@ func (pm *ProviderManager) GenerateCommitMessage(diff string, useEmoji bool) (st
 	}
 
 	return "", "", fmt.Errorf("no providers available")
+}
+
+// GeneratePRContent tries providers in order to generate PR title and body
+func (pm *ProviderManager) GeneratePRContent(commits string, currentBranch string, defaultBranch string, useEmoji bool) (string, string, string, error) {
+	for i, provider := range pm.providers {
+		ctx, cancel := context.WithTimeout(context.Background(), pm.delayThreshold)
+		defer cancel()
+
+		title, body, err := provider.GeneratePRContent(ctx, commits, currentBranch, defaultBranch, useEmoji)
+		if err == nil {
+			return title, body, provider.Name(), nil
+		}
+
+		// If this was the last provider or if it's not a timeout error, return the error
+		if i == len(pm.providers)-1 {
+			return "", "", provider.Name(), fmt.Errorf("all providers failed, last error from %s: %w", provider.Name(), err)
+		}
+
+		// Check if the error is due to context timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			// Continue to next provider
+			continue
+		}
+
+		// For non-timeout errors, still try the next provider but log this one
+		continue
+	}
+
+	return "", "", "", fmt.Errorf("no providers available")
 }
