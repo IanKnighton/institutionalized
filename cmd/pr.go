@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,6 +21,7 @@ var prCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(prCmd)
 	prCmd.Flags().BoolP("draft", "d", false, "Create a draft pull request")
+	prCmd.Flags().Bool("dry-run", false, "Show what would be done without creating the PR")
 }
 
 func runPR(cmd *cobra.Command, args []string) error {
@@ -33,8 +35,11 @@ func runPR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("GitHub CLI (gh) is not available. Please install it from https://cli.github.com/")
 	}
 
-	// Check if user is authenticated with gh
-	if !isGHAuthenticated() {
+	// Check for dry-run mode early - we don't need auth for dry-run
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+
+	// Check if user is authenticated with gh (skip for dry-run)
+	if !isDryRun && !isGHAuthenticated() {
 		return fmt.Errorf("not authenticated with GitHub CLI. Run 'gh auth login' to authenticate")
 	}
 
@@ -70,6 +75,25 @@ func runPR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to generate PR content: %w", err)
 	}
 
+	// Check for dry-run mode
+	if isDryRun {
+		fmt.Printf("📋 PR Preview (dry-run mode)\n")
+		fmt.Printf("=====================================\n")
+		fmt.Printf("Title: %s\n", prTitle)
+		fmt.Printf("Base: %s\n", defaultBranch)
+		fmt.Printf("Head: %s\n", currentBranch)
+		isDraft, _ := cmd.Flags().GetBool("draft")
+		if isDraft {
+			fmt.Printf("Draft: Yes\n")
+		} else {
+			fmt.Printf("Draft: No\n")
+		}
+		fmt.Printf("\nBody:\n%s\n", prBody)
+		fmt.Printf("=====================================\n")
+		fmt.Printf("✅ Dry-run completed. Use 'institutionalized pr' to create the actual PR.\n")
+		return nil
+	}
+
 	// Check for draft flag
 	isDraft, _ := cmd.Flags().GetBool("draft")
 
@@ -94,7 +118,7 @@ func isGHAuthenticated() bool {
 	if os.Getenv("GH_TOKEN") != "" {
 		return true
 	}
-	
+
 	// Check normal gh auth status
 	cmd := exec.Command("gh", "auth", "status")
 	err := cmd.Run()
@@ -124,7 +148,7 @@ func getDefaultBranch() (string, error) {
 			return parts[len(parts)-1], nil
 		}
 	}
-	
+
 	// Try using gh CLI to get default branch if authenticated
 	if isGHAuthenticated() {
 		cmd := exec.Command("gh", "repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name")
@@ -136,14 +160,14 @@ func getDefaultBranch() (string, error) {
 			}
 		}
 	}
-	
+
 	// Fallback to checking common default branches
 	for _, branch := range []string{"main", "master"} {
 		if branchExists(branch) {
 			return branch, nil
 		}
 	}
-	
+
 	// Final fallback - assume main
 	return "main", nil
 }
@@ -159,7 +183,7 @@ func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config) 
 	// First, try to get commits between default branch and current branch
 	cmd := exec.Command("git", "log", fmt.Sprintf("%s..%s", defaultBranch, currentBranch), "--oneline")
 	output, err := cmd.Output()
-	
+
 	// If that fails, try getting recent commits from current branch
 	if err != nil {
 		cmd = exec.Command("git", "log", "--oneline", "-10", currentBranch)
@@ -177,7 +201,7 @@ func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config) 
 	// Generate PR title from the first commit or branch name
 	commitLines := strings.Split(commits, "\n")
 	firstCommit := commitLines[0]
-	
+
 	// Extract commit message (remove hash)
 	parts := strings.SplitN(firstCommit, " ", 2)
 	var prTitle string
@@ -215,14 +239,31 @@ This pull request includes changes from the **%s** branch.
 // createPR creates the pull request using gh CLI
 func createPR(title, body, currentBranch, baseBranch string, isDraft bool) error {
 	args := []string{"pr", "create", "--title", title, "--body", body, "--base", baseBranch}
-	
+
 	if isDraft {
 		args = append(args, "--draft")
 	}
 
 	cmd := exec.Command("gh", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	
-	return cmd.Run()
+
+	// Capture both stdout and stderr for better error reporting
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		// Show the actual error from gh CLI
+		if stderr.Len() > 0 {
+			return fmt.Errorf("gh CLI error: %s", stderr.String())
+		}
+		return fmt.Errorf("failed to create PR: %w", err)
+	}
+
+	// Show success output
+	if stdout.Len() > 0 {
+		fmt.Print(stdout.String())
+	}
+
+	return nil
 }

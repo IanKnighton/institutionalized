@@ -4,7 +4,7 @@ A simple tool that uses an LLM to create commit and PR messages based on git sta
 
 ## Overview
 
-Institutionalized is a Go CLI tool that analyzes your staged git changes and uses AI providers (OpenAI ChatGPT or Google Gemini) to generate conventional commit messages, then prompts you to confirm before committing the changes.
+Institutionalized is a Go CLI tool that analyzes your staged git changes and uses AI providers (OpenAI ChatGPT or Google Gemini) to generate conventional commit messages, then prompts you to confirm before committing the changes. It can also create comprehensive pull requests using GitHub CLI.
 
 ## Features
 
@@ -13,6 +13,9 @@ Institutionalized is a Go CLI tool that analyzes your staged git changes and use
 - 🔍 **Smart analysis**: Analyzes your staged git changes to understand the context
 - 🛡️ **User confirmation**: Always asks for confirmation before committing
 - 🔧 **Flexible configuration**: Support for multiple AI providers with fallback capability
+- 🚀 **Pull Request creation**: Creates comprehensive PRs with GitHub CLI integration
+- 📋 **Draft PR support**: Option to create draft pull requests
+- 🔍 **Dry-run mode**: Preview PR content without creating actual PRs
 - ⚡ **Provider fallback**: Automatically switches to backup provider if primary fails or times out
 - 😊 **Emoji support**: Optional emoji prefixes for commit types (✨ feat, 🐛 fix, etc.)
 
@@ -199,9 +202,49 @@ institutionalized config set providers.priority gemini
 institutionalized config init
 ```
 
+#### `institutionalized pr`
+
+Create a pull request using GitHub CLI that documents the scope of changes made, testing added, and features completed.
+
+**Requirements:**
+- GitHub CLI (`gh`) installed and authenticated
+- Must be on a feature branch (not the default branch)
+- Must be in a git repository
+
+**Flags:**
+- `--draft, -d`: Create a draft pull request
+- `--dry-run`: Show what would be done without creating the PR (doesn't require authentication)
+
+**Examples:**
+
+```bash
+# Create a standard pull request
+institutionalized pr
+
+# Create a draft pull request
+institutionalized pr --draft
+
+# Preview what the PR would look like (no authentication required)
+institutionalized pr --dry-run
+
+# Preview a draft PR
+institutionalized pr --draft --dry-run
+```
+
+**How it works:**
+1. Verifies `gh` CLI is installed and user is authenticated
+2. Checks that current branch is not the default branch
+3. Analyzes commit history between current branch and default branch
+4. Generates PR title from the most recent commit message
+5. Creates comprehensive PR description with commit summary and structured content
+6. Uses `gh pr create` to create the pull request
+
 ### Example Workflow
 
 ```bash
+# Create a feature branch
+git checkout -b feature/new-functionality
+
 # Make some changes
 echo "console.log('Hello, World!');" > hello.js
 
@@ -210,6 +253,18 @@ git add hello.js
 
 # Let AI generate and commit with a conventional message
 institutionalized commit
+
+# Make additional changes and commits as needed
+# ... more development work ...
+
+# When ready, create a pull request
+institutionalized pr
+
+# Or create a draft PR to share work-in-progress
+institutionalized pr --draft
+
+# Preview the PR without creating it
+institutionalized pr --dry-run
 ```
 
 The tool will analyze your changes and might generate a commit message like:
@@ -218,6 +273,11 @@ feat: add hello world JavaScript example
 
 Add a simple JavaScript file that logs "Hello, World!" to the console.
 ```
+
+When creating a PR, it will generate a comprehensive description including:
+- Summary of all commits in the branch
+- Structured sections for changes made and testing
+- Automatic formatting for easy review
 
 ## Conventional Commits
 
@@ -242,8 +302,9 @@ Common types include:
 
 - Go 1.24+ for building from source
 - Git repository (the tool must be run within a git repository)
-- OpenAI API key
-- Staged changes (use `git add` to stage files before running)
+- OpenAI API key or Google Gemini API key (for commit message generation)
+- GitHub CLI (`gh`) installed and authenticated (for PR creation)
+- Staged changes (use `git add` to stage files before running commit command)
 
 ## License
 
