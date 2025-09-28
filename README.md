@@ -22,13 +22,25 @@ Institutionalized is a Go CLI tool that analyzes your staged git changes and use
 
 ## Installation
 
-### Build from source
+### Quick Install
+
+The fastest way to install and use `institutionalized` from anywhere:
 
 ```bash
-git clone https://github.com/IanKnighton/institutionalized.git
-cd institutionalized
-go build -o institutionalized .
+go install github.com/IanKnighton/institutionalized@latest
 ```
+
+This installs the binary to your `$GOPATH/bin` directory. Make sure `$GOPATH/bin` is in your `$PATH` to use `institutionalized` from anywhere.
+
+### Other Installation Methods
+
+For detailed installation instructions including manual installation, PATH setup, and troubleshooting, see our comprehensive [Installation Guide](docs/installation.md).
+
+**Available methods:**
+- Install via Go (recommended)
+- Build from source with global installation
+- Manual binary placement and PATH configuration
+- Platform-specific instructions for Linux, macOS, and Windows
 
 ## Usage
 
@@ -73,78 +85,28 @@ The tool will automatically detect which API keys are available and use them acc
 
 ### Configuration
 
-Institutionalized supports a configuration file located at `~/.config/institutionalized/config.yaml`. The configuration file allows you to customize the behavior of the tool.
+Institutionalized supports extensive configuration options to customize AI provider settings, emoji preferences, timeouts, and more. Configuration is managed through a YAML file and CLI commands.
 
-#### Available Configuration Options
-
-- `use_emoji`: Enable/disable emoji prefixes in commit messages (default: `false`)
-- `providers.openai.enabled`: Enable/disable OpenAI ChatGPT provider (default: `true`)
-- `providers.gemini.enabled`: Enable/disable Google Gemini provider (default: `true`)
-- `providers.claude.enabled`: Enable/disable Anthropic Claude provider (default: `true`)
-- `providers.priority`: Which provider to try first when multiple are available - `openai`, `gemini`, or `claude` (default: `openai`)
-- `providers.delay_threshold`: Maximum seconds to wait for a provider response before trying fallback (default: `10`, range: 1-300)
-
-#### Managing Configuration
-
-**View current configuration:**
+**Quick configuration:**
 ```bash
+# View current settings
 institutionalized config show
-```
 
-**Create a default configuration file:**
-```bash
+# Create default configuration
 institutionalized config init
+
+# Set a provider as primary
+institutionalized config set providers.priority claude
 ```
 
-**Set configuration values:**
-```bash
-# Enable emoji in commit messages
-institutionalized config set use_emoji true
+For comprehensive configuration documentation including all available options, provider management, emoji settings, and troubleshooting, see our detailed [Configuration Guide](docs/configuration.md).
 
-# Disable emoji in commit messages
-institutionalized config set use_emoji false
-
-# Set Gemini as the primary provider
-institutionalized config set providers.priority gemini
-
-# Disable OpenAI provider (use only Gemini)
-institutionalized config set providers.openai.enabled false
-
-# Set delay threshold to 20 seconds
-institutionalized config set providers.delay_threshold 20
-```
-
-#### Emoji Support
-
-When emoji support is enabled (`use_emoji: true`), commit messages will be prefixed with appropriate emoji:
-
-- ✨ `feat`: New features
-- 🐛 `fix`: Bug fixes
-- 📚 `docs`: Documentation changes
-- 💄 `style`: Code style changes
-- ♻️ `refactor`: Code refactoring
-- ✅ `test`: Adding or updating tests
-- 🔧 `chore`: Build process or auxiliary tool changes
-- ⚡ `perf`: Performance improvements
-- 👷 `ci`: CI/CD changes
-- 🏗️ `build`: Build system changes
-- ⏪ `revert`: Reverting changes
-
-**Example with emoji enabled:**
-```
-✨ feat: add user authentication system
-
-Implement JWT-based authentication with login and signup endpoints.
-```
-
-**Override emoji setting per command:**
-```bash
-# Use emoji for this commit (overrides config)
-institutionalized commit --emoji
-
-# Don't use emoji for this commit (overrides config)
-institutionalized commit --emoji=false
-```
+**Key features:**
+- Multiple AI provider support (OpenAI, Gemini, Claude)
+- Configurable provider priority and fallback
+- Emoji support for commit types
+- Timeout and performance tuning
+- Environment variable integration
 
 ### Commands
 
@@ -179,39 +141,26 @@ institutionalized commit --emoji
 
 #### `institutionalized config`
 
-Manage configuration settings for institutionalized.
+Manage configuration settings for institutionalized. Supports provider management, emoji preferences, timeout settings, and more.
 
 **Subcommands:**
 - `show`: Display current configuration values
 - `set <key> <value>`: Set a configuration value
 - `init`: Create a default configuration file
 
-**Available configuration keys:**
-- `use_emoji`: Enable/disable emoji support (true/false)
-- `providers.openai.enabled`: Enable/disable OpenAI provider (true/false)
-- `providers.gemini.enabled`: Enable/disable Gemini provider (true/false)
-- `providers.claude.enabled`: Enable/disable Claude provider (true/false)
-- `providers.priority`: Set provider priority (openai/gemini/claude)
-- `providers.delay_threshold`: Set timeout in seconds (1-300)
-
-**Examples:**
-
+**Quick Examples:**
 ```bash
 # View current configuration
 institutionalized config show
 
-# Enable emoji support
-institutionalized config set use_emoji true
-
-# Set Gemini as primary provider
-institutionalized config set providers.priority gemini
-
 # Set Claude as primary provider
 institutionalized config set providers.priority claude
 
-# Create default config file
-institutionalized config init
+# Enable emoji support
+institutionalized config set use_emoji true
 ```
+
+For complete configuration documentation including all available options and advanced settings, see the [Configuration Guide](docs/configuration.md).
 
 #### `institutionalized pr`
 
