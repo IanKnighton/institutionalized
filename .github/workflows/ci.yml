@@ -92,7 +92,8 @@ jobs:
                     
                     echo "Building for $GOOS/$GOARCH..."
                     
-                    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X github.com/IanKnighton/institutionalized/cmd.Version=${VERSION}" -o ${BINARY_NAME} .
+                    MODULE_PATH=$(grep '^module ' go.mod | awk '{print $2}')
+                    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X ${MODULE_PATH}/cmd.Version=${VERSION}" -o ${BINARY_NAME} .
                     
                     # Create archive
                     ARCHIVE_NAME="institutionalized-${VERSION}-${OS_NAME}-${GOARCH}"
