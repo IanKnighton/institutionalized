@@ -37,6 +37,7 @@ This installs the binary to your `$GOPATH/bin` directory. Make sure `$GOPATH/bin
 For detailed installation instructions including manual installation, PATH setup, and troubleshooting, see our comprehensive [Installation Guide](docs/installation.md).
 
 **Available methods:**
+
 - Install via Go (recommended)
 - Build from source with global installation
 - Manual binary placement and PATH configuration
@@ -72,11 +73,13 @@ The tool will automatically detect which API keys are available and use them acc
 ### Basic Usage
 
 1. Make your changes and stage them:
+
    ```bash
    git add .
    ```
 
 2. Run institutionalized to generate and commit:
+
    ```bash
    institutionalized commit
    ```
@@ -88,6 +91,7 @@ The tool will automatically detect which API keys are available and use them acc
 Institutionalized supports extensive configuration options to customize AI provider settings, emoji preferences, timeouts, and more. Configuration is managed through a YAML file and CLI commands.
 
 **Quick configuration:**
+
 ```bash
 # View current settings
 institutionalized config show
@@ -102,6 +106,7 @@ institutionalized config set providers.priority claude
 For comprehensive configuration documentation including all available options, provider management, emoji settings, and troubleshooting, see our detailed [Configuration Guide](docs/configuration.md).
 
 **Key features:**
+
 - Multiple AI provider support (OpenAI, Gemini, Claude)
 - Configurable provider priority and fallback
 - Emoji support for commit types
@@ -115,6 +120,7 @@ For comprehensive configuration documentation including all available options, p
 Analyzes staged changes and generates a conventional commit message using available AI providers (OpenAI ChatGPT, Google Gemini, or Anthropic Claude).
 
 **Flags:**
+
 - `--api-key, -k`: OpenAI API key (deprecated: use `OPENAI_API_KEY` environment variable)
 - `--emoji`: Use emoji in commit messages (overrides config file setting)
 - `--dry-run`: Show staged changes without calling API or committing (useful for testing)
@@ -144,11 +150,13 @@ institutionalized commit --emoji
 Manage configuration settings for institutionalized. Supports provider management, emoji preferences, timeout settings, and more.
 
 **Subcommands:**
+
 - `show`: Display current configuration values
 - `set <key> <value>`: Set a configuration value
 - `init`: Create a default configuration file
 
 **Quick Examples:**
+
 ```bash
 # View current configuration
 institutionalized config show
@@ -167,11 +175,13 @@ For complete configuration documentation including all available options and adv
 Create a pull request using GitHub CLI that documents the scope of changes made, testing added, and features completed.
 
 **Requirements:**
+
 - GitHub CLI (`gh`) installed and authenticated
 - Must be on a feature branch (not the default branch)
 - Must be in a git repository
 
 **Flags:**
+
 - `--draft, -d`: Create a draft pull request
 - `--dry-run`: Show what would be done without creating the PR (doesn't require authentication)
 - `--yes, -y`: Skip confirmation prompt and create PR immediately
@@ -201,6 +211,7 @@ institutionalized pr --draft --dry-run
 **Pull Request Templates:**
 
 The tool automatically detects and respects pull request templates in your repository. It looks for templates in the following locations (in order of priority):
+
 - `.github/pull_request_template.md`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 - `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`
@@ -209,6 +220,7 @@ The tool automatically detects and respects pull request templates in your repos
 When a template is found, the LLM is instructed to follow the template structure while generating the PR description based on your commit history.
 
 **How it works:**
+
 1. Verifies `gh` CLI is installed and user is authenticated
 2. Checks that current branch is not the default branch
 3. Analyzes commit history between current branch and default branch
@@ -246,6 +258,7 @@ institutionalized pr --dry-run
 ```
 
 The tool will analyze your changes and might generate a commit message like:
+
 ```
 feat: add hello world JavaScript example
 
@@ -253,6 +266,7 @@ Add a simple JavaScript file that logs "Hello, World!" to the console.
 ```
 
 When creating a PR, it will generate a comprehensive description including:
+
 - Summary of all commits in the branch
 - Structured sections for changes made and testing
 - Automatic formatting for easy review
@@ -268,6 +282,7 @@ The tool follows the [Conventional Commits](https://www.conventionalcommits.org/
 ```
 
 Common types include:
+
 - `feat`: A new feature
 - `fix`: A bug fix
 - `docs`: Documentation changes
@@ -286,4 +301,4 @@ Common types include:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.# Test comment
+MIT License - see [LICENSE](LICENSE) file for details.
