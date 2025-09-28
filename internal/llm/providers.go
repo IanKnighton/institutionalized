@@ -28,6 +28,11 @@ type GeminiProvider struct {
 	apiKey string
 }
 
+// ClaudeProvider implements the Provider interface for Anthropic Claude
+type ClaudeProvider struct {
+	apiKey string
+}
+
 // NewOpenAIProvider creates a new OpenAI provider instance
 func NewOpenAIProvider(apiKey string) *OpenAIProvider {
 	return &OpenAIProvider{
@@ -42,6 +47,13 @@ func NewGeminiProvider(apiKey string) *GeminiProvider {
 	}
 }
 
+// NewClaudeProvider creates a new Claude provider instance
+func NewClaudeProvider(apiKey string) *ClaudeProvider {
+	return &ClaudeProvider{
+		apiKey: apiKey,
+	}
+}
+
 // Name returns the provider name
 func (p *OpenAIProvider) Name() string {
 	return "OpenAI"
@@ -50,6 +62,11 @@ func (p *OpenAIProvider) Name() string {
 // Name returns the provider name
 func (p *GeminiProvider) Name() string {
 	return "Gemini"
+}
+
+// Name returns the provider name
+func (p *ClaudeProvider) Name() string {
+	return "Claude"
 }
 
 // OpenAI API structures
@@ -101,6 +118,32 @@ type geminiCandidate struct {
 
 type geminiError struct {
 	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// Claude API structures
+type claudeRequest struct {
+	Model     string          `json:"model"`
+	MaxTokens int             `json:"max_tokens"`
+	Messages  []claudeMessage `json:"messages"`
+}
+
+type claudeMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type claudeResponse struct {
+	Content []claudeContent `json:"content"`
+	Error   *claudeError    `json:"error,omitempty"`
+}
+
+type claudeContent struct {
+	Text string `json:"text"`
+}
+
+type claudeError struct {
+	Type    string `json:"type"`
 	Message string `json:"message"`
 }
 
@@ -429,6 +472,168 @@ BODY:
 	}
 
 	content := geminiResp.Candidates[0].Content.Parts[0].Text
+	return parsePRResponse(content)
+}
+
+// GenerateCommitMessage generates a commit message using Claude
+func (p *ClaudeProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
+	emojiInstruction := ""
+	if useEmoji {
+		emojiInstruction = "\n- Add an appropriate emoji at the beginning of the commit type (✨ feat, 🐛 fix, 📚 docs, 💄 style, ♻️ refactor, ✅ test, 🔧 chore, ⚡ perf, 👷 ci, 🏗️ build, ⏪ revert)"
+	}
+
+	prompt := fmt.Sprintf(`Analyze the following git diff and generate a conventional commit message. 
+
+The commit message should follow the Conventional Commits specification:
+- Start with a type (feat, fix, docs, style, refactor, test, chore, etc.)
+- Include a brief description in present tense
+- Keep the first line under 50 characters if possible
+- Add a body if the change is complex (separate with blank line)%s
+
+Git diff:
+%s
+
+Return only the commit message, nothing else.`, emojiInstruction, diff)
+
+	reqBody := claudeRequest{
+		Model:     "claude-3-haiku-20240307",
+		MaxTokens: 1024,
+		Messages: []claudeMessage{
+			{Role: "user", Content: prompt},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", p.apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var claudeResp claudeResponse
+	if err := json.Unmarshal(body, &claudeResp); err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if claudeResp.Error != nil {
+		return "", fmt.Errorf("Claude API error: %s", claudeResp.Error.Message)
+	}
+
+	if len(claudeResp.Content) == 0 {
+		return "", fmt.Errorf("no response from Claude")
+	}
+
+	return claudeResp.Content[0].Text, nil
+}
+
+// GeneratePRContent generates PR title and body using Claude
+func (p *ClaudeProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
+	emojiInstruction := ""
+	if useEmoji {
+		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
+	}
+
+	templateInstruction := ""
+	if prTemplate != "" {
+		templateInstruction = fmt.Sprintf(`
+
+IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
+
+--- PR TEMPLATE START ---
+%s
+--- PR TEMPLATE END ---
+
+When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
+	}
+
+	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
+
+The pull request merges branch '%s' into '%s'.%s
+
+Requirements:
+- Generate a clear, concise PR title that summarizes the main purpose of the changes
+- Create a detailed PR body with the following sections (unless overridden by template above):
+  - ## Summary: Brief overview of what this PR accomplishes
+  - ## Changes Made: Bullet points of key changes and improvements
+  - ## Testing: Description of testing performed or needed
+  - ## Additional Notes: Any important information for reviewers%s
+
+Commits to analyze:
+%s
+
+Return the response in this exact format:
+TITLE: [your generated title here]
+
+BODY:
+[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
+
+	reqBody := claudeRequest{
+		Model:     "claude-3-haiku-20240307",
+		MaxTokens: 2048,
+		Messages: []claudeMessage{
+			{Role: "user", Content: prompt},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", p.apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var claudeResp claudeResponse
+	if err := json.Unmarshal(body, &claudeResp); err != nil {
+		return "", "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if claudeResp.Error != nil {
+		return "", "", fmt.Errorf("Claude API error: %s", claudeResp.Error.Message)
+	}
+
+	if len(claudeResp.Content) == 0 {
+		return "", "", fmt.Errorf("no response from Claude")
+	}
+
+	content := claudeResp.Content[0].Text
 	return parsePRResponse(content)
 }
 

@@ -56,6 +56,8 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("      enabled: %t\n", cfg.Providers.OpenAI.Enabled)
 	fmt.Printf("    gemini:\n")
 	fmt.Printf("      enabled: %t\n", cfg.Providers.Gemini.Enabled)
+	fmt.Printf("    claude:\n")
+	fmt.Printf("      enabled: %t\n", cfg.Providers.Claude.Enabled)
 	fmt.Printf("    priority: %s\n", cfg.Providers.Priority)
 	fmt.Printf("    delay_threshold: %d seconds\n", cfg.Providers.DelayThreshold)
 
@@ -110,11 +112,20 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		default:
 			return fmt.Errorf("invalid value for providers.gemini.enabled: %s (expected true/false)", value)
 		}
+	case "providers.claude.enabled":
+		switch value {
+		case "true", "1", "yes", "on":
+			cfg.Providers.Claude.Enabled = true
+		case "false", "0", "no", "off":
+			cfg.Providers.Claude.Enabled = false
+		default:
+			return fmt.Errorf("invalid value for providers.claude.enabled: %s (expected true/false)", value)
+		}
 	case "providers.priority":
-		if value == "openai" || value == "gemini" {
+		if value == "openai" || value == "gemini" || value == "claude" {
 			cfg.Providers.Priority = value
 		} else {
-			return fmt.Errorf("invalid value for providers.priority: %s (expected openai/gemini)", value)
+			return fmt.Errorf("invalid value for providers.priority: %s (expected openai/gemini/claude)", value)
 		}
 	case "providers.delay_threshold":
 		// Parse the value as integer
@@ -127,7 +138,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		}
 		cfg.Providers.DelayThreshold = delayThreshold
 	default:
-		return fmt.Errorf("unknown config key: %s (available: use_emoji, providers.openai.enabled, providers.gemini.enabled, providers.priority, providers.delay_threshold)", key)
+		return fmt.Errorf("unknown config key: %s (available: use_emoji, providers.openai.enabled, providers.gemini.enabled, providers.claude.enabled, providers.priority, providers.delay_threshold)", key)
 	}
 
 	if err := config.SaveConfig(cfg); err != nil {

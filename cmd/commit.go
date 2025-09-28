@@ -63,7 +63,7 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(providers) == 0 {
-		return fmt.Errorf("no LLM providers available. Please set OPENAI_API_KEY or GEMINI_API_KEY environment variable")
+		return fmt.Errorf("no LLM providers available. Please set OPENAI_API_KEY, GEMINI_API_KEY, or CLAUDE_API_KEY environment variable")
 	}
 
 	fmt.Println("Analyzing staged changes...")
@@ -125,34 +125,30 @@ func setupProviders(cfg *config.Config) ([]llm.Provider, error) {
 	// Check for available API keys
 	openaiKey := os.Getenv("OPENAI_API_KEY")
 	geminiKey := os.Getenv("GEMINI_API_KEY")
+	claudeKey := os.Getenv("CLAUDE_API_KEY")
 
-	// Create a list of potential providers based on priority
-	var primaryProvider, fallbackProvider llm.Provider
+	// Create map of available providers
+	availableProviders := make(map[string]llm.Provider)
 
-	if cfg.Providers.Priority == "gemini" {
-		// Gemini has priority
-		if geminiKey != "" && cfg.Providers.Gemini.Enabled {
-			primaryProvider = llm.NewGeminiProvider(geminiKey)
-		}
-		if openaiKey != "" && cfg.Providers.OpenAI.Enabled {
-			fallbackProvider = llm.NewOpenAIProvider(openaiKey)
-		}
-	} else {
-		// OpenAI has priority (default)
-		if openaiKey != "" && cfg.Providers.OpenAI.Enabled {
-			primaryProvider = llm.NewOpenAIProvider(openaiKey)
-		}
-		if geminiKey != "" && cfg.Providers.Gemini.Enabled {
-			fallbackProvider = llm.NewGeminiProvider(geminiKey)
-		}
+	if openaiKey != "" && cfg.Providers.OpenAI.Enabled {
+		availableProviders["openai"] = llm.NewOpenAIProvider(openaiKey)
+	}
+	if geminiKey != "" && cfg.Providers.Gemini.Enabled {
+		availableProviders["gemini"] = llm.NewGeminiProvider(geminiKey)
+	}
+	if claudeKey != "" && cfg.Providers.Claude.Enabled {
+		availableProviders["claude"] = llm.NewClaudeProvider(claudeKey)
 	}
 
-	// Add providers in priority order
-	if primaryProvider != nil {
-		providers = append(providers, primaryProvider)
+	// Add primary provider first if available
+	if primary, exists := availableProviders[cfg.Providers.Priority]; exists {
+		providers = append(providers, primary)
+		delete(availableProviders, cfg.Providers.Priority)
 	}
-	if fallbackProvider != nil {
-		providers = append(providers, fallbackProvider)
+
+	// Add remaining providers as fallbacks
+	for _, provider := range availableProviders {
+		providers = append(providers, provider)
 	}
 
 	return providers, nil
