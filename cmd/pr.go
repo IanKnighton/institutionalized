@@ -324,7 +324,7 @@ This pull request includes changes from the **%s** branch.
 	}
 
 	if len(providers) == 0 {
-		return "", "", fmt.Errorf("no LLM providers available. Please set OPENAI_API_KEY or GEMINI_API_KEY environment variable")
+		return "", "", fmt.Errorf("no LLM providers available. Please set OPENAI_API_KEY, GEMINI_API_KEY, or CLAUDE_API_KEY environment variable")
 	}
 
 	// Determine if emoji should be used

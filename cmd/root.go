@@ -11,7 +11,7 @@ var rootCmd = &cobra.Command{
 	Use:   "institutionalized",
 	Short: "A simple tool that uses LLMs to create commit and PR messages based on git status",
 	Long: `institutionalized is a CLI tool that analyzes your staged git changes
-and uses AI providers (OpenAI ChatGPT or Google Gemini) to generate conventional 
+and uses AI providers (OpenAI ChatGPT, Google Gemini, or Anthropic Claude) to generate conventional 
 commit messages, then prompts you to confirm before committing the changes.`,
 }
 

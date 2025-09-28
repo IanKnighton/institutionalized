@@ -207,7 +207,7 @@ After installation, verify everything is working:
 
 After successful installation:
 
-1. **Set up API keys**: Follow the [Usage section in the README](../README.md#usage) to configure your OpenAI and/or Gemini API keys
+1. **Set up API keys**: Follow the [Usage section in the README](../README.md#usage) to configure your OpenAI, Gemini, and/or Claude API keys
 2. **Initialize configuration**: Run `institutionalized config init` to create a default configuration file
 3. **Test with a repository**: Try `institutionalized commit --dry-run` in a git repository with staged changes
 

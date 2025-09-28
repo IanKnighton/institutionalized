@@ -18,8 +18,9 @@ type Config struct {
 type Providers struct {
 	OpenAI ProviderConfig `yaml:"openai"`
 	Gemini ProviderConfig `yaml:"gemini"`
+	Claude ProviderConfig `yaml:"claude"`
 	// Priority determines which provider to try first when both are available
-	// Valid values: "openai", "gemini"
+	// Valid values: "openai", "gemini", "claude"
 	Priority string `yaml:"priority"`
 	// DelayThreshold is the maximum time in seconds to wait for a provider response
 	// before trying the fallback provider (if available)
@@ -40,6 +41,9 @@ func DefaultConfig() *Config {
 				Enabled: true,
 			},
 			Gemini: ProviderConfig{
+				Enabled: true,
+			},
+			Claude: ProviderConfig{
 				Enabled: true,
 			},
 			Priority:       "openai",
