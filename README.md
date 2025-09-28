@@ -22,13 +22,25 @@ Institutionalized is a Go CLI tool that analyzes your staged git changes and use
 
 ## Installation
 
-### Build from source
+### Quick Install
+
+The fastest way to install and use `institutionalized` from anywhere:
 
 ```bash
-git clone https://github.com/IanKnighton/institutionalized.git
-cd institutionalized
-go build -o institutionalized .
+go install github.com/IanKnighton/institutionalized@latest
 ```
+
+This installs the binary to your `$GOPATH/bin` directory. Make sure `$GOPATH/bin` is in your `$PATH` to use `institutionalized` from anywhere.
+
+### Other Installation Methods
+
+For detailed installation instructions including manual installation, PATH setup, and troubleshooting, see our comprehensive [Installation Guide](docs/installation.md).
+
+**Available methods:**
+- Install via Go (recommended)
+- Build from source with global installation
+- Manual binary placement and PATH configuration
+- Platform-specific instructions for Linux, macOS, and Windows
 
 ## Usage
 
