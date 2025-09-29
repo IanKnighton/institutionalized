@@ -2,11 +2,11 @@
 
 ## Repository Overview
 
-**institutionalized** is a Go CLI tool that analyzes staged git changes and uses AI providers (OpenAI ChatGPT or Google Gemini) to generate conventional commit messages, then prompts users to confirm before committing the changes. It can also create comprehensive pull requests using GitHub CLI. The tool follows the Conventional Commits specification and helps developers create consistent, meaningful commit messages and PRs automatically.
+**institutionalized** is a Go CLI tool that analyzes staged git changes and uses AI providers (OpenAI ChatGPT, Google Gemini, or Anthropic Claude) to generate conventional commit messages, then prompts users to confirm before committing the changes. It can also create comprehensive pull requests using GitHub CLI. The tool follows the Conventional Commits specification and helps developers create consistent, meaningful commit messages and PRs automatically.
 
 ## High-Level Repository Information
 
-- **Size**: Small, focused CLI application (~12 files, ~2000 lines total)
+- **Size**: Small, focused CLI application (~15 files, ~2500 lines total)
 - **Type**: Go CLI application using Cobra framework
 - **Language**: Go 1.24.7+
 - **Key Dependencies**: 
@@ -14,14 +14,14 @@
   - `github.com/spf13/pflag` v1.0.9 (command-line flag parsing)
   - `gopkg.in/yaml.v3` v3.0.1 (YAML configuration parsing)
 - **Target Runtime**: Cross-platform CLI binary
-- **External APIs**: OpenAI ChatGPT API and Google Gemini API with configurable provider priority
+- **External APIs**: OpenAI ChatGPT API, Google Gemini API, and Anthropic Claude API with configurable provider priority
 
 ## Build and Validation Instructions
 
 ### Prerequisites
 - Go 1.24.7+ installed
 - Git repository (tool must be run within a git repo)
-- OpenAI API key and/or Google Gemini API key for full functionality
+- OpenAI API key, Google Gemini API key, and/or Anthropic Claude API key for full functionality
 - GitHub CLI (`gh`) installed and authenticated (for PR creation)
 - **Always run commands from the repository root directory**
 
@@ -50,14 +50,14 @@ make check
 ```
 
 **Testing Notes**:
-- Currently no test files exist (shows `[no test files]` message)
+- Test files exist in `cmd/pr_test.go` covering PR template functionality
 - `make check` runs: `go fmt`, `go mod tidy`, then `go test`
 - All commands should complete successfully with exit code 0
 
 ### Available Make Targets
 - `make build` - Build the binary with version info
 - `make clean` - Remove build artifacts and clean Go cache
-- `make test` - Run tests (currently none exist)
+- `make test` - Run tests (currently PR functionality tests)
 - `make install` - Install binary to GOPATH/bin
 - `make fmt` - Format Go code
 - `make lint` - Run golangci-lint (requires golangci-lint to be installed)
@@ -80,6 +80,8 @@ git add <files>
 export OPENAI_API_KEY="your-openai-key"
 # OR/AND
 export GEMINI_API_KEY="your-gemini-key"
+# OR/AND
+export CLAUDE_API_KEY="your-claude-key"
 
 ./institutionalized commit --dry-run  # Safe test without API call
 
@@ -112,7 +114,11 @@ The application follows a standard Cobra CLI pattern with command-based architec
 │   ├── commit.go          # Main commit command logic
 │   ├── config.go          # Configuration management commands
 │   ├── pr.go              # Pull request creation functionality
+│   ├── pr_test.go         # Tests for PR template functionality
 │   └── version.go         # Version command
+├── docs/                   # User documentation
+│   ├── configuration.md   # Detailed configuration guide
+│   └── installation.md    # Installation instructions
 ├── internal/               # Internal packages
 │   ├── config/            # Configuration management
 │   │   └── config.go      # Config structure and file handling
@@ -121,6 +127,7 @@ The application follows a standard Cobra CLI pattern with command-based architec
 ├── Makefile               # Build automation
 ├── go.mod                 # Go module definition
 ├── go.sum                 # Dependency checksums
+├── CONTRIBUTING.md        # Development guidelines and contribution process
 ├── README.md              # User documentation
 ├── LICENSE                # MIT license
 └── .gitignore            # Git ignore rules
@@ -170,7 +177,7 @@ The application follows a standard Cobra CLI pattern with command-based architec
 - Default config creation and YAML serialization
 
 **internal/llm/providers.go** (513 lines):
-- OpenAI and Gemini provider implementations
+- OpenAI, Gemini, and Claude provider implementations
 - Provider interface for consistent API across providers
 - Handles API requests, response parsing, and error handling
 - Supports both commit message and PR content generation
@@ -201,9 +208,10 @@ The application follows a standard Cobra CLI pattern with command-based architec
 **External APIs**:
 - OpenAI ChatGPT API (https://api.openai.com/v1/chat/completions)
 - Google Gemini API (https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent)
+- Anthropic Claude API (https://api.anthropic.com/v1/messages)
 - Configurable provider priority with automatic fallback
-- Uses gpt-3.5-turbo for OpenAI and gemini-1.5-flash for Gemini
-- Requires Bearer token authentication for both providers
+- Uses gpt-3.5-turbo for OpenAI, gemini-1.5-flash for Gemini, and claude-3-5-sonnet for Claude
+- Requires Bearer token authentication for OpenAI and Gemini, API key for Claude
 
 **Git Integration**:
 - Uses `git` command directly via `os/exec`
@@ -245,12 +253,17 @@ The application follows a standard Cobra CLI pattern with command-based architec
 LICENSE             # MIT license (21 lines)
 Makefile            # Build automation (39 lines)
 README.md           # Documentation (311 lines)
+CONTRIBUTING.md     # Development guidelines (293 lines)
 cmd/                # Command implementations directory
 ├── commit.go       # Commit command (215 lines)
 ├── config.go       # Config command (157 lines)
 ├── pr.go          # PR command (301 lines)
+├── pr_test.go     # Tests for PR functionality (77 lines)
 ├── root.go        # Root command (33 lines)
 └── version.go     # Version command (22 lines)
+docs/               # User documentation
+├── configuration.md # Configuration guide (360 lines)
+└── installation.md  # Installation instructions
 internal/           # Internal packages
 ├── config/        # Configuration management
 │   └── config.go  # Config handling (131 lines)
@@ -264,10 +277,10 @@ main.go             # Application entry point (15 lines)
 ## Important Implementation Notes
 
 **API Key Handling**:
-- Accepts API keys via environment variables: `OPENAI_API_KEY` and/or `GEMINI_API_KEY`
+- Accepts API keys via environment variables: `OPENAI_API_KEY` and/or `GEMINI_API_KEY` and/or `CLAUDE_API_KEY`
 - Legacy `--api-key` flag still supported but deprecated for OpenAI only
 - Environment variables take precedence over flags
-- Both providers can be enabled simultaneously with configurable priority
+- Multiple providers can be enabled simultaneously with configurable priority
 - Automatic fallback to secondary provider if primary fails or times out
 
 **Configuration System**:
