@@ -24,6 +24,7 @@ var commitCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(commitCmd)
 	commitCmd.Flags().Bool("dry-run", false, "Show staged changes without calling API or committing")
+	commitCmd.Flags().BoolP("push", "p", false, "Push changes to remote after successful commit")
 }
 
 func runCommit(cmd *cobra.Command, args []string) error {
@@ -101,6 +102,18 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Changes committed successfully!")
+
+	// Check if push flag is set
+	pushChanges, _ := cmd.Flags().GetBool("push")
+	if pushChanges {
+		fmt.Println("Pushing changes to remote...")
+		if err := pushToRemote(); err != nil {
+			fmt.Printf("Warning: commit was successful but push failed: %v\n", err)
+			return nil // Don't fail the entire command since commit succeeded
+		}
+		fmt.Println("Changes pushed successfully!")
+	}
+
 	return nil
 }
 
@@ -167,6 +180,11 @@ func askForConfirmation(question string) bool {
 
 func commitChanges(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
+	return cmd.Run()
+}
+
+func pushToRemote() error {
+	cmd := exec.Command("git", "push")
 	return cmd.Run()
 }
 
