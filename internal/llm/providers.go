@@ -149,23 +149,7 @@ type claudeError struct {
 
 // GenerateCommitMessage generates a commit message using OpenAI
 func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- Add an appropriate emoji at the beginning of the commit type (✨ feat, 🐛 fix, 📚 docs, 💄 style, ♻️ refactor, ✅ test, 🔧 chore, ⚡ perf, 👷 ci, 🏗️ build, ⏪ revert)"
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git diff and generate a conventional commit message. 
-
-The commit message should follow the Conventional Commits specification:
-- Start with a type (feat, fix, docs, style, refactor, test, chore, etc.)
-- Include a brief description in present tense
-- Keep the first line under 50 characters if possible
-- Add a body if the change is complex (separate with blank line)%s
-
-Git diff:
-%s
-
-Return only the commit message, nothing else.`, emojiInstruction, diff)
+	prompt := CommitMessagePromptTemplate(diff, useEmoji)
 
 	reqBody := openAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -217,44 +201,7 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 
 // GeneratePRContent generates PR title and body using OpenAI
 func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
-	}
-
-	templateInstruction := ""
-	if prTemplate != "" {
-		templateInstruction = fmt.Sprintf(`
-
-IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
-
---- PR TEMPLATE START ---
-%s
---- PR TEMPLATE END ---
-
-When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
-
-The pull request merges branch '%s' into '%s'.%s
-
-Requirements:
-- Generate a clear, concise PR title that summarizes the main purpose of the changes
-- Create a detailed PR body with the following sections (unless overridden by template above):
-  - ## Summary: Brief overview of what this PR accomplishes
-  - ## Changes Made: Bullet points of key changes and improvements
-  - ## Testing: Description of testing performed or needed
-  - ## Additional Notes: Any important information for reviewers%s
-
-Commits to analyze:
-%s
-
-Return the response in this exact format:
-TITLE: [your generated title here]
-
-BODY:
-[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
 
 	reqBody := openAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -307,23 +254,7 @@ BODY:
 
 // GenerateCommitMessage generates a commit message using Gemini
 func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- Add an appropriate emoji at the beginning of the commit type (✨ feat, 🐛 fix, 📚 docs, 💄 style, ♻️ refactor, ✅ test, 🔧 chore, ⚡ perf, 👷 ci, 🏗️ build, ⏪ revert)"
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git diff and generate a conventional commit message. 
-
-The commit message should follow the Conventional Commits specification:
-- Start with a type (feat, fix, docs, style, refactor, test, chore, etc.)
-- Include a brief description in present tense
-- Keep the first line under 50 characters if possible
-- Add a body if the change is complex (separate with blank line)%s
-
-Git diff:
-%s
-
-Return only the commit message, nothing else.`, emojiInstruction, diff)
+	prompt := CommitMessagePromptTemplate(diff, useEmoji)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -384,44 +315,7 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 
 // GeneratePRContent generates PR title and body using Gemini
 func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
-	}
-
-	templateInstruction := ""
-	if prTemplate != "" {
-		templateInstruction = fmt.Sprintf(`
-
-IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
-
---- PR TEMPLATE START ---
-%s
---- PR TEMPLATE END ---
-
-When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
-
-The pull request merges branch '%s' into '%s'.%s
-
-Requirements:
-- Generate a clear, concise PR title that summarizes the main purpose of the changes
-- Create a detailed PR body with the following sections (unless overridden by template above):
-  - ## Summary: Brief overview of what this PR accomplishes
-  - ## Changes Made: Bullet points of key changes and improvements
-  - ## Testing: Description of testing performed or needed
-  - ## Additional Notes: Any important information for reviewers%s
-
-Commits to analyze:
-%s
-
-Return the response in this exact format:
-TITLE: [your generated title here]
-
-BODY:
-[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -477,23 +371,7 @@ BODY:
 
 // GenerateCommitMessage generates a commit message using Claude
 func (p *ClaudeProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- Add an appropriate emoji at the beginning of the commit type (✨ feat, 🐛 fix, 📚 docs, 💄 style, ♻️ refactor, ✅ test, 🔧 chore, ⚡ perf, 👷 ci, 🏗️ build, ⏪ revert)"
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git diff and generate a conventional commit message. 
-
-The commit message should follow the Conventional Commits specification:
-- Start with a type (feat, fix, docs, style, refactor, test, chore, etc.)
-- Include a brief description in present tense
-- Keep the first line under 50 characters if possible
-- Add a body if the change is complex (separate with blank line)%s
-
-Git diff:
-%s
-
-Return only the commit message, nothing else.`, emojiInstruction, diff)
+	prompt := CommitMessagePromptTemplate(diff, useEmoji)
 
 	reqBody := claudeRequest{
 		Model:     "claude-3-haiku-20240307",
@@ -547,44 +425,7 @@ Return only the commit message, nothing else.`, emojiInstruction, diff)
 
 // GeneratePRContent generates PR title and body using Claude
 func (p *ClaudeProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	emojiInstruction := ""
-	if useEmoji {
-		emojiInstruction = "\n- You may add appropriate emojis to make the PR more engaging if it fits naturally"
-	}
-
-	templateInstruction := ""
-	if prTemplate != "" {
-		templateInstruction = fmt.Sprintf(`
-
-IMPORTANT: This repository has a pull request template that you MUST follow. Please structure your response to match this template as closely as possible:
-
---- PR TEMPLATE START ---
-%s
---- PR TEMPLATE END ---
-
-When generating the PR body, use the template structure above but fill it with content based on the commit analysis. Maintain the same sections and format from the template.`, prTemplate)
-	}
-
-	prompt := fmt.Sprintf(`Analyze the following git commits and generate a comprehensive pull request title and body.
-
-The pull request merges branch '%s' into '%s'.%s
-
-Requirements:
-- Generate a clear, concise PR title that summarizes the main purpose of the changes
-- Create a detailed PR body with the following sections (unless overridden by template above):
-  - ## Summary: Brief overview of what this PR accomplishes
-  - ## Changes Made: Bullet points of key changes and improvements
-  - ## Testing: Description of testing performed or needed
-  - ## Additional Notes: Any important information for reviewers%s
-
-Commits to analyze:
-%s
-
-Return the response in this exact format:
-TITLE: [your generated title here]
-
-BODY:
-[your generated body here]`, currentBranch, defaultBranch, templateInstruction, emojiInstruction, commits)
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
 
 	reqBody := claudeRequest{
 		Model:     "claude-3-haiku-20240307",
