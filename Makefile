@@ -4,7 +4,7 @@
 BINARY_NAME=institutionalized
 
 # Version - can be overridden by environment variable or command line
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "1.0.0-dev")
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo "1.0.0-dev")
 
 # Build the binary
 build:
