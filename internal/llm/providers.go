@@ -13,8 +13,8 @@ import (
 
 // Provider represents an LLM provider interface
 type Provider interface {
-	GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error)
-	GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (title string, body string, err error)
+	GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool, userContext string) (string, error)
+	GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string, userContext string) (title string, body string, err error)
 	Name() string
 }
 
@@ -148,8 +148,8 @@ type claudeError struct {
 }
 
 // GenerateCommitMessage generates a commit message using OpenAI
-func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	prompt := CommitMessagePromptTemplate(diff, useEmoji)
+func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool, userContext string) (string, error) {
+	prompt := CommitMessagePromptTemplate(diff, useEmoji, userContext)
 
 	reqBody := openAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -200,8 +200,8 @@ func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, diff string,
 }
 
 // GeneratePRContent generates PR title and body using OpenAI
-func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
+func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string, userContext string) (string, string, error) {
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji, userContext)
 
 	reqBody := openAIRequest{
 		Model: "gpt-3.5-turbo",
@@ -253,8 +253,8 @@ func (p *OpenAIProvider) GeneratePRContent(ctx context.Context, commits string, 
 }
 
 // GenerateCommitMessage generates a commit message using Gemini
-func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	prompt := CommitMessagePromptTemplate(diff, useEmoji)
+func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool, userContext string) (string, error) {
+	prompt := CommitMessagePromptTemplate(diff, useEmoji, userContext)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -314,8 +314,8 @@ func (p *GeminiProvider) GenerateCommitMessage(ctx context.Context, diff string,
 }
 
 // GeneratePRContent generates PR title and body using Gemini
-func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
+func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string, userContext string) (string, string, error) {
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji, userContext)
 
 	reqBody := geminiRequest{
 		Contents: []geminiContent{
@@ -370,8 +370,8 @@ func (p *GeminiProvider) GeneratePRContent(ctx context.Context, commits string, 
 }
 
 // GenerateCommitMessage generates a commit message using Claude
-func (p *ClaudeProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool) (string, error) {
-	prompt := CommitMessagePromptTemplate(diff, useEmoji)
+func (p *ClaudeProvider) GenerateCommitMessage(ctx context.Context, diff string, useEmoji bool, userContext string) (string, error) {
+	prompt := CommitMessagePromptTemplate(diff, useEmoji, userContext)
 
 	reqBody := claudeRequest{
 		Model:     "claude-3-haiku-20240307",
@@ -424,8 +424,8 @@ func (p *ClaudeProvider) GenerateCommitMessage(ctx context.Context, diff string,
 }
 
 // GeneratePRContent generates PR title and body using Claude
-func (p *ClaudeProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, error) {
-	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji)
+func (p *ClaudeProvider) GeneratePRContent(ctx context.Context, commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string, userContext string) (string, string, error) {
+	prompt := PRContentPromptTemplate(commits, currentBranch, defaultBranch, prTemplate, useEmoji, userContext)
 
 	reqBody := claudeRequest{
 		Model:     "claude-3-haiku-20240307",
@@ -527,12 +527,12 @@ func NewProviderManager(providers []Provider, delayThreshold time.Duration) *Pro
 }
 
 // GenerateCommitMessage tries providers in order with timeout and fallback
-func (pm *ProviderManager) GenerateCommitMessage(diff string, useEmoji bool) (string, string, error) {
+func (pm *ProviderManager) GenerateCommitMessage(diff string, useEmoji bool, userContext string) (string, string, error) {
 	for i, provider := range pm.providers {
 		ctx, cancel := context.WithTimeout(context.Background(), pm.delayThreshold)
 		defer cancel()
 
-		result, err := provider.GenerateCommitMessage(ctx, diff, useEmoji)
+		result, err := provider.GenerateCommitMessage(ctx, diff, useEmoji, userContext)
 		if err == nil {
 			return result, provider.Name(), nil
 		}
@@ -556,12 +556,12 @@ func (pm *ProviderManager) GenerateCommitMessage(diff string, useEmoji bool) (st
 }
 
 // GeneratePRContent tries providers in order to generate PR title and body
-func (pm *ProviderManager) GeneratePRContent(commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string) (string, string, string, error) {
+func (pm *ProviderManager) GeneratePRContent(commits string, currentBranch string, defaultBranch string, useEmoji bool, prTemplate string, userContext string) (string, string, string, error) {
 	for i, provider := range pm.providers {
 		ctx, cancel := context.WithTimeout(context.Background(), pm.delayThreshold)
 		defer cancel()
 
-		title, body, err := provider.GeneratePRContent(ctx, commits, currentBranch, defaultBranch, useEmoji, prTemplate)
+		title, body, err := provider.GeneratePRContent(ctx, commits, currentBranch, defaultBranch, useEmoji, prTemplate, userContext)
 		if err == nil {
 			return title, body, provider.Name(), nil
 		}
