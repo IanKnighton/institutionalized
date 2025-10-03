@@ -25,6 +25,7 @@ func init() {
 	rootCmd.AddCommand(commitCmd)
 	commitCmd.Flags().Bool("dry-run", false, "Show staged changes without calling API or committing")
 	commitCmd.Flags().BoolP("push", "p", false, "Push changes to remote after successful commit")
+	commitCmd.Flags().StringP("context", "c", "", "Additional context to include in the commit message generation")
 }
 
 func runCommit(cmd *cobra.Command, args []string) error {
@@ -49,6 +50,19 @@ func runCommit(cmd *cobra.Command, args []string) error {
 		fmt.Println("Staged changes found:")
 		fmt.Println(diff)
 		return nil
+	}
+
+	// Get context flag value
+	contextText, _ := cmd.Flags().GetString("context")
+	// If context flag is present but empty, prompt user for input
+	if cmd.Flags().Changed("context") && contextText == "" {
+		fmt.Print("Please enter additional context: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read context input: %w", err)
+		}
+		contextText = strings.TrimSpace(input)
 	}
 
 	// Load configuration
@@ -77,7 +91,7 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	manager := llm.NewProviderManager(providers, delayThreshold)
 
 	// Generate commit message using available providers
-	commitMessage, providerUsed, err := manager.GenerateCommitMessage(diff, useEmoji)
+	commitMessage, providerUsed, err := manager.GenerateCommitMessage(diff, useEmoji, contextText)
 	if err != nil {
 		return fmt.Errorf("failed to generate commit message: %w", err)
 	}
