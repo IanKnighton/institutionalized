@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -25,6 +26,7 @@ func init() {
 	prCmd.Flags().BoolP("draft", "d", false, "Create a draft pull request")
 	prCmd.Flags().Bool("dry-run", false, "Show what would be done without creating the PR")
 	prCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt and create PR immediately")
+	prCmd.Flags().String("context", "", "Additional context to include in the PR generation")
 }
 
 func runPR(cmd *cobra.Command, args []string) error {
@@ -44,6 +46,19 @@ func runPR(cmd *cobra.Command, args []string) error {
 	// Check if user is authenticated with gh (skip for dry-run)
 	if !isDryRun && !isGHAuthenticated() {
 		return fmt.Errorf("not authenticated with GitHub CLI. Run 'gh auth login' to authenticate")
+	}
+
+	// Get context flag value
+	contextText, _ := cmd.Flags().GetString("context")
+	// If context flag is present but empty, prompt user for input
+	if cmd.Flags().Changed("context") && contextText == "" {
+		fmt.Print("Please enter additional context: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read context input: %w", err)
+		}
+		contextText = strings.TrimSpace(input)
 	}
 
 	// Get current branch
@@ -73,7 +88,7 @@ func runPR(cmd *cobra.Command, args []string) error {
 	}
 
 	// Generate PR title and body
-	prTitle, prBody, err := generatePRContent(currentBranch, defaultBranch, cfg, isDryRun)
+	prTitle, prBody, err := generatePRContent(currentBranch, defaultBranch, cfg, isDryRun, contextText)
 	if err != nil {
 		return fmt.Errorf("failed to generate PR content: %w", err)
 	}
@@ -231,7 +246,7 @@ func getPRTemplate() (string, error) {
 }
 
 // generatePRContent generates the PR title and body using LLM providers
-func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, isDryRun bool) (string, string, error) {
+func generatePRContent(currentBranch, defaultBranch string, cfg *config.Config, isDryRun bool, contextText string) (string, string, error) {
 	// First, try to get commits between default branch and current branch
 	cmd := exec.Command("git", "log", fmt.Sprintf("%s..%s", defaultBranch, currentBranch), "--oneline")
 	output, err := cmd.Output()
@@ -335,7 +350,7 @@ This pull request includes changes from the **%s** branch.
 	manager := llm.NewProviderManager(providers, delayThreshold)
 
 	// Generate PR content using available providers
-	prTitle, prBody, providerUsed, err := manager.GeneratePRContent(commits, currentBranch, defaultBranch, useEmoji, prTemplate)
+	prTitle, prBody, providerUsed, err := manager.GeneratePRContent(commits, currentBranch, defaultBranch, useEmoji, prTemplate, contextText)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate PR content using %s: %w", providerUsed, err)
 	}
