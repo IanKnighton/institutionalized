@@ -4,9 +4,33 @@ This guide covers all the ways to install `institutionalized` so you can use it 
 
 ## Quick Install (Recommended)
 
-### Option 1: Install from Source with Go
+### Option 1: Homebrew (macOS - Recommended)
 
-If you have Go installed, this is the fastest way to get started:
+If you're on macOS and have Homebrew installed, this is the easiest way to install and keep `institutionalized` up to date:
+
+```bash
+brew install ianknighton/tap/institutionalized
+```
+
+This will:
+- Download and install the latest version automatically
+- Make `institutionalized` available from anywhere on your system
+- Allow easy updates with `brew upgrade institutionalized`
+- Handle all PATH configuration automatically
+
+**Updating:**
+```bash
+brew upgrade institutionalized
+```
+
+**Uninstalling:**
+```bash
+brew uninstall institutionalized
+```
+
+### Option 2: Install from Source with Go
+
+If you have Go installed, this works on all platforms:
 
 ```bash
 go install github.com/IanKnighton/institutionalized@latest
@@ -17,9 +41,41 @@ This will:
 - Install the binary to your `$GOPATH/bin` directory
 - Make `institutionalized` available from anywhere (if `$GOPATH/bin` is in your `$PATH`)
 
-### Option 2: Download Pre-built Binary
+### Option 3: Download Pre-built Binary
 
-*Note: Pre-built binaries are not currently available. Please use one of the other installation methods.*
+Pre-built binaries are available from the [GitHub Releases](https://github.com/IanKnighton/institutionalized/releases) page.
+
+1. **Download the appropriate archive for your platform:**
+   - **Linux AMD64**: `institutionalized-*-linux-amd64.tar.gz`
+   - **Linux ARM64**: `institutionalized-*-linux-arm64.tar.gz`
+   - **macOS AMD64**: `institutionalized-*-macos-amd64.tar.gz`
+   - **macOS ARM64** (Apple Silicon): `institutionalized-*-macos-arm64.tar.gz`
+   - **Windows AMD64**: `institutionalized-*-windows-amd64.zip`
+
+2. **Extract the archive:**
+   ```bash
+   # Linux/macOS (tar.gz)
+   tar -xzf institutionalized-*.tar.gz
+   
+   # Windows (zip)
+   # Use Windows Explorer or: unzip institutionalized-*.zip
+   ```
+
+3. **Make it executable (Linux/macOS only):**
+   ```bash
+   chmod +x institutionalized
+   ```
+
+4. **Move to PATH (optional but recommended):**
+   ```bash
+   # Linux/macOS
+   sudo mv institutionalized /usr/local/bin/
+   
+   # Or to user directory (no sudo required)
+   mkdir -p ~/bin
+   mv institutionalized ~/bin/
+   export PATH="$HOME/bin:$PATH"
+   ```
 
 ## Manual Installation Methods
 
@@ -180,6 +236,35 @@ After installation, verify everything is working:
 
 ## Troubleshooting
 
+### Homebrew-specific issues
+
+#### Tap not found
+If you get an error about the tap not being found:
+```bash
+brew tap ianknighton/tap
+brew install ianknighton/tap/institutionalized
+```
+
+#### Formula not found
+If the formula isn't available yet (new releases):
+- Wait a few minutes for the Homebrew tap to update after a new release
+- Try updating Homebrew: `brew update`
+- Check the [Homebrew tap repository](https://github.com/IanKnighton/homebrew-tap) for status
+
+#### Update issues
+If `brew upgrade` doesn't work:
+```bash
+brew update
+brew upgrade institutionalized
+```
+
+#### Reinstalling with Homebrew
+To completely reinstall:
+```bash
+brew uninstall institutionalized
+brew install ianknighton/tap/institutionalized
+```
+
 ### "command not found" error
 
 - **Check PATH**: Make sure the directory containing the binary is in your `$PATH`
@@ -214,6 +299,14 @@ After successful installation:
 ## Uninstalling
 
 To remove institutionalized:
+
+### If installed via Homebrew
+```bash
+brew uninstall institutionalized
+
+# Remove configuration (optional)
+rm -rf ~/.config/institutionalized/
+```
 
 ### If installed via Go
 ```bash
