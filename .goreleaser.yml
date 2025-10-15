@@ -45,7 +45,7 @@ brews:
       owner: IanKnighton
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/IanKnighton/institutionalized
     description: "A CLI tool that uses LLMs to create commit and PR messages based on git status"
     license: MIT

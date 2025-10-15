@@ -227,7 +227,10 @@ The application follows a standard Cobra CLI pattern with command-based architec
 
 ### Development Workflow
 
-**No CI/CD Pipeline**: Currently no GitHub Actions or other automation exists.
+**CI/CD Pipeline**: GitHub Actions workflow in `.github/workflows/ci.yml` with three jobs:
+1. **test**: Runs `make check` and `make build` on Ubuntu
+2. **release-tag**: Creates release tags on main branch pushes  
+3. **create-release**: Uses GoReleaser to build multi-platform binaries and publish to Homebrew tap
 
 **Manual Validation Steps**:
 1. Run `make check` to format, tidy, and test
