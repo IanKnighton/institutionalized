@@ -26,7 +26,7 @@ func init() {
 	prCmd.Flags().BoolP("draft", "d", false, "Create a draft pull request")
 	prCmd.Flags().Bool("dry-run", false, "Show what would be done without creating the PR")
 	prCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt and create PR immediately")
-	prCmd.Flags().String("context", "", "Additional context to include in the PR generation")
+	prCmd.Flags().StringP("context", "c", "", "Additional context to include in the PR generation")
 }
 
 func runPR(cmd *cobra.Command, args []string) error {
