@@ -1,8 +1,5 @@
 version: 2
 
-before:
-  hooks:
-    - go mod tidy
 
 builds:
   - env:
@@ -20,12 +17,7 @@ builds:
 
 archives:
   - format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}-
-      {{- .Version }}-
-      {{- if eq .Os "darwin" }}macos
-      {{- else }}{{ .Os }}{{ end }}-
-      {{- .Arch }}
+    name_template: '{{ .ProjectName }}-{{ .Version }}-{{ if eq .Os "darwin" }}macos{{ else }}{{ .Os }}{{ end }}-{{ .Arch }}'
     format_overrides:
       - goos: windows
         format: zip

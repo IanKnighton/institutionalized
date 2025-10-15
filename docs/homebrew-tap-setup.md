@@ -17,7 +17,8 @@ This document explains how to set up the Homebrew tap repository for `institutio
 2. Click "Generate new token (classic)"
 3. Give it a name like "GoReleaser Homebrew Tap"
 4. Select scopes:
-   - `repo` (Full control of private repositories)
+   - `public_repo` (Recommended: access to public repositories only)
+   - **Alternatively, use a [fine-grained personal access token](https://github.com/settings/tokens?type=beta) limited to the `homebrew-tap` repository with "Contents: Read and write" permission.**
 5. Generate and copy the token
 
 ### 3. Add Secret to Repository
@@ -57,6 +58,7 @@ institutionalized version
 
 If you need to manually create or update the formula, create a file at `Formula/institutionalized.rb` in the `homebrew-tap` repository:
 
+> **Important:** In the example below, replace **every** occurrence of `VERSION` with the actual release tag (e.g., `1.2.3`), and **every** occurrence of `CHECKSUM` with the computed SHA256 for each binary. Failing to update all placeholders will cause the formula to fail.
 ```ruby
 class Institutionalized < Formula
   desc "CLI tool that uses LLMs to create commit and PR messages based on git status"
